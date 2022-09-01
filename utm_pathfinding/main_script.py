@@ -97,9 +97,10 @@ if __name__ == '__main__':
     x_config = 100
     y_config = 100
     z_config = 100
-    map_area = Map.Map(x_config, y_config, z_config)    
+    gs = 5
+    map_area = Map.Map(x_config, y_config, z_config, gs)    
     
-    n_regions = 25
+    n_regions = 4
     z_step = 25
     map_area.break_into_square_regions(n_regions, z_step)
     map_area.find_neighbor_regions()
@@ -107,7 +108,7 @@ if __name__ == '__main__':
     #create abstract graph
     #do this by 
     #    
-    # map_area.plot_regions(True)
+    map_area.plot_regions(True)
     
     #position = map_area.unravel_meshgrid()
     #test = unravel_meshgrid(map_area.grid)
@@ -118,11 +119,12 @@ if __name__ == '__main__':
     test = ab_graph.graph
     
 #%% astar graph test
-    start = (25,25,75)
-    end = (75, 73, 62)
+    start = (250,250,75)
+    end = (485, 369, 62)
+    height_bound = 30
     
-    ab_graph.insert_temp_nodes(start, 30)
-    ab_graph.insert_temp_nodes(end, 30)
+    ab_graph.insert_temp_nodes(start, height_bound )
+    ab_graph.insert_temp_nodes(end, height_bound )
     
     reservation_table = {}
     astar_graph = PathFinding.AstarGraph(ab_graph.graph, reservation_table,

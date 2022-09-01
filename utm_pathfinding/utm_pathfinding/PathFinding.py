@@ -146,7 +146,7 @@ class AstarGraph(object):
             
                 #put to open set
                 self.openset.put((new_node.f, new_node))
-            
+
             iter_count +=1
 
 class AstarLowLevel(object):
@@ -154,7 +154,7 @@ class AstarLowLevel(object):
     or inherit from original Astar and use polymorphism for weaker post condition
     stronger postcondition constraints
     
-    Improvmeents:
+    Improvments:
         refactor heuristics by the following:
             do a gradient iteration
             change delta z from start to goal:
@@ -298,7 +298,7 @@ class AstarLowLevel(object):
         if curr_pos == self.goal:
             return True
     
-    def main(self):
+    def main(self) -> None:
         ss = 1
         count = 0 
         
@@ -388,8 +388,6 @@ class AstarLowLevel(object):
         if self.openset.empty():
             print("open set is empty")
             return 0, count, self.closedset 
-
-
 
 class AnimateMultiUAS():
     def __init__(self, uas_paths:list, method_name:str):

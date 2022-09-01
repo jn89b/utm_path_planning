@@ -11,35 +11,224 @@ from itertools import combinations, permutations, product
 
 #https://stackoverflow.com/questions/36013063/what-is-the-purpose-of-meshgrid-in-python-numpy
 
-class AbstractNode():
-    def __init__(self, global_location, region_coord):
+class Map(object):
+    """
+    Config map overall size 
+    """
+    def __init__(self, x_max:float, y_max:float, z_max:float,
+                 grid_space:int) -> None:
+        self.x_array = np.arange(0, x_max)     
+        self.y_array = np.arange(0, y_max)
+        self.z_array = np.arange(25, z_max)
+        
+        self.meshgrid = self.generate_grid()
+        self.regions = {}
+        
+        self.grid_space = int(grid_space)
+        self.offset_val = 1
+
+    def __get_region_bounds(self,index, step_size) -> list:
+        """get min and max bounds of the cluster"""
+        #print(index, index+step_size)
+        return [index, index+step_size-self.offset_val] 
+    
+    def __create_region_sides(self, start_val:float, end_val:float, 
+                              const_val:float, z_steps:list,  
+                              lat_or_long= "lat",) -> list:
+        """"return side of square"""
+        side_list = []    
+        for z in z_steps:            
+            for i in range(start_val, end_val+self.offset_val, self.grid_space):
+                
+                # if lateral then left or right side, so y will change                    
+                if lat_or_long == "lat":
+                    #pruning off outer edges
+                    if const_val <= self.x_array[0] or const_val >= self.x_array[-1]:
+                        continue
+                    side_list.append((const_val,i,z))
+                
+                else:
+                    #pruning off outer edges
+                    if const_val <= self.y_array[0] or const_val >= self.y_array[-1]:
+                        continue
+                    side_list.append((i,const_val,z))
+            
+        return side_list    
+    
+    def __is_out_bounds(self, region_coord:tuple) -> bool:
+        if (region_coord[0] > (self.region_bound_x[1]) or 
+            region_coord[0] < 0 or 
+            region_coord[1] > (self.region_bound_y[1]) or 
+            region_coord[1] < 0 ):
+            return True
+        
+        return False    
+    
+    def generate_grid(self) -> list:
+        return np.meshgrid(self.x_array, self.y_array, self.z_array, 
+                           indexing='xy')
+        
+    def unravel_meshgrid(self) -> np.ndarray:
+        """unravel meshgrid and retruns array of [3, xlen*ylen*zlen] of matrices
+        """
+        return np.vstack(map(np.ravel, self.meshgrid))
+    
+    def find_which_region(self, coordinates:tuple) -> tuple:
+        """find which region the coordinate belongs to"""
+        for reg_coord, region in self.regions.items():
+            x_bounds, y_bounds = region.limits
+       
+            if coordinates[0] in range(x_bounds[0], x_bounds[1]+self.offset_val) and \
+                (coordinates[1] in range(y_bounds[0], y_bounds[1]+self.offset_val)):
+                
+                return region.region_coordinate
+                 
+    def break_into_square_regions(self, num_regions:int, z_step:int) -> None:
+        """
+        break map into regions based on number of regions specified
+        need to refactor the setup of this system 
+        """
+        
+        n_row = m.sqrt(num_regions)
+        region_length = round(len(self.x_array)/n_row)
+        print("region length: ",region_length)
+        z_steps = list(np.arange(self.z_array[0],
+                                 self.z_array[-1]+self.offset_val, 
+                                 z_step))
+         
+        for i in range(0, len(self.x_array), region_length):
+            for j in range(0, len(self.y_array), region_length):
+                        
+                x_min_max = self.__get_region_bounds(i,region_length) #[x_min, x_max]
+                y_min_max = self.__get_region_bounds(j, region_length) #[y_min, y_max]
+                
+                region_coords = (i//region_length, j//region_length)
+                region_name = str(region_coords)
+                
+                bottom_side = self.__create_region_sides(
+                    x_min_max[0], x_min_max[1], y_min_max[0], z_steps,"lon")
+                top_side = self.__create_region_sides(
+                    x_min_max[0], x_min_max[1], y_min_max[1],z_steps, "lon")
+                
+                right_side = self.__create_region_sides(
+                    y_min_max[0], y_min_max[1], x_min_max[1], z_steps)
+                left_side = self.__create_region_sides(
+                    y_min_max[0], y_min_max[1], x_min_max[0],z_steps)
+                  
+                limits = (x_min_max, y_min_max) 
+                
+                region = Region(region_coords, limits)
+                region.region_sides['left_side'] = left_side
+                region.region_sides['right_side'] = right_side
+                region.region_sides['top_side'] = top_side
+                region.region_sides['bottom_side'] = bottom_side
+                
+                self.regions[region_name] = region
+
+                print("i and j are  " + str(i//region_length) + " and " + str(j//region_length))
+                # print("region name is " + region_name)
+                print("limits are " + str(limits))
+                print("\n")
+                
+        self.region_bound_x = (0,region_coords[0])
+        self.region_bound_y = (0,region_coords[1])
+                
+
+    def find_neighbor_regions(self) -> None:
+        """Find neighbors of each region and connect their sides
+        -from current region call out which side the neighbor is at ,
+        -from this side access the neighbor region and get the opposite side
+        -use this opposite side to access the location
+        -link these two together  
+        """
+        ss = 1
+        
+        move_dict = {'top_side': [0,ss],
+                     'bottom_side': [0,-ss],
+                     'left_side': [-ss,0],
+                     'right_side': [ss,0]}
+        
+        for region_key, region in self.regions.items():
+            region_coord = region.region_coordinate
+            
+            for move_key, move in move_dict.items():
+                neighbor_pos = (region_coord[0]+move[0], 
+                                region_coord[1]+move[1])
+                
+                if self.__is_out_bounds(neighbor_pos) == True:
+                    continue
+                           
+                neighbor_reg = self.regions[str(neighbor_pos)]
+                neighbor_side = neighbor_reg.get_opposite_side(move_key)
+                neighbor_coords = neighbor_reg.region_sides[neighbor_side]
+    
+                # region.neighbor_sides[neighbor_side] = neighbor_reg
+                region.set_neighbor_side(move_key, neighbor_coords)
+                region.set_neighbor_region(move_key, neighbor_pos)
+                
+    def main(self,num_regions:int, z_step:int) -> None:
+        """main implementation"""
+        self.break_into_square_regions(num_regions, z_step)
+        self.find_neighbor_regions()
+                
+    def plot_regions(self, threed=False) -> None:
+        """plot regions, threed plot is defaulted to false"""
+        if not self.regions:
+            print("no regions currently")
+        else:
+            self.fig = plt.figure(figsize=(8, 8))
+            self.ax = self.fig.add_subplot(111, projection="3d")
+            self.ax.set_xlim3d(self.x_array[0], self.x_array[-1])
+            self.ax.set_ylim3d(self.y_array[0], self.y_array[-1])
+            self.ax.set_zlim3d(self.z_array[0], self.z_array[-1])
+            self.title = self.ax.set_title("Regions",fontsize=18)
+            
+            color_list = sns.color_palette("hls", len(self.regions))
+            
+            if threed == False:
+                for i, (k, v) in enumerate(self.regions.items()):
+                    for r_k, r_v in v.region_sides.items():
+                        if r_v:
+                            x,y,z = zip(*r_v)
+                            self.ax.plot(x,y,color=color_list[i])
+            else:
+                print("plotting 3d")
+                for i, (k, v) in enumerate(self.regions.items()):
+                    for r_k, r_v in v.region_sides.items():
+                        if r_v:
+                            x,y,z = zip(*r_v)
+                            self.ax.scatter(x,y,z,color=color_list[i])
+                    
+
+class AbstractNode(object):
+    def __init__(self, global_location:tuple, region_coord:tuple) -> None:
         self.location = global_location
         self.position = global_location
         self.region_coord = region_coord
         self.level = None
         self.node_type = None
     
-    def set_cost(self,cost):
+    def set_cost(self,cost) -> None:
         """this is the edge cost"""
         self.cost = cost
         
-    def set_node_type(self,node_type):
+    def set_node_type(self,node_type) -> None:
         """set type of node, inter connects regions, intra connects within"""
         if node_type == "INTER":
             self.node_type = "INTER"
         if node_type == "INTRA":
             self.node_type = "INTRA"
                             
-    def __get_comparison(self):
+    def __get_comparison(self) -> bool:
         return (tuple(self.location), self.node_type)
             
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return (self.location, self.node_type) == (other.location, other.node_type)
         
-    def __ne__(self, other):
+    def __ne__(self, other) -> bool:
         return (not self.__eq__(other))
     
-    def __hash__(self):
+    def __hash__(self) -> bool:
         return hash(self.__get_comparison())
 
 class Region(object):
@@ -81,7 +270,7 @@ class Region(object):
         self.neighbor_regions[adjacent_key] = neighbor_reg_coord
 
 class AbstractGraph(object):
-    def __init__(self, map_area:object) -> None:
+    def __init__(self, map_area:Map) -> None:
         """map and graph data"""
         self.map = map_area
         self.graph = {}
@@ -179,7 +368,7 @@ class AbstractGraph(object):
         self.connect_to_border(temp_node, str(location), height_bound)
 
         
-    def connect_to_border(self,node:object, key_name:str, height_limit:float) -> None:
+    def connect_to_border(self,node:AbstractNode, key_name:str, height_limit:float) -> None:
         """connect borders to the map, I should have this in the graph class but define the key value
         so set key to start and goal to make it temporary"""
         offset_limit = height_limit #this is dumb should have this parameterized
@@ -202,7 +391,7 @@ class AbstractGraph(object):
                 else:
                     continue
                      
-    def __add_node(self, node:object) -> None:
+    def __add_node(self, node:AbstractNode) -> None:
         """add node to search graph"""
         if str(node.location) in self.graph:
             self.graph[str(node.location)].add(node)
@@ -245,189 +434,3 @@ class AbstractGraph(object):
         self.graph[str(node1.location)].add(node2)
         self.graph[str(node2.location)].add(node1)
 
-class Map(object):
-    """
-    Config map overall size 
-    """
-    def __init__(self, x_max:float, y_max:float, z_max:float) -> None:
-        self.x_array = np.arange(0, x_max)     
-        self.y_array = np.arange(0, y_max)
-        self.z_array = np.arange(25, z_max)
-        
-        self.meshgrid = self.generate_grid()
-        self.regions = {}
-        
-        self.grid_space = 1
-        self.offset_val = 1
-        
-    def generate_grid(self) -> list:
-        return np.meshgrid(self.x_array, self.y_array, self.z_array, 
-                           indexing='xy')
-        
-    def unravel_meshgrid(self) -> np.ndarray:
-        """unravel meshgrid and retruns array of [3, xlen*ylen*zlen] of matrices
-        """
-        return np.vstack(map(np.ravel, self.meshgrid))
-    
-    
-    def __get_cluster_bounds(self,index, step_size) -> list:
-        """get min and max bounds of the cluster"""
-        #print(index, index+step_size)
-        return [index, index+step_size-self.offset_val] 
-    
-    def __create_region_sides(self, start_val:float, end_val:float, 
-                              const_val:float, z_steps:list, 
-                              lat_or_long= "lat") -> list:
-        """"return side of square"""
-        side_list = []    
-        for z in z_steps:            
-            for i in range(start_val, end_val+self.offset_val):
-                
-                # if lateral then left or right side, so y will change                    
-                if lat_or_long == "lat":
-                    #pruning off outer edges
-                    if const_val <= self.x_array[0] or const_val >= self.x_array[-1]:
-                        continue
-                    side_list.append((const_val,i,z))
-                
-                else:
-                    #pruning off outer edges
-                    if const_val <= self.y_array[0] or const_val >= self.y_array[-1]:
-                        continue
-                    side_list.append((i,const_val,z))
-            
-        return side_list
-    
-    def find_which_region(self, coordinates:tuple) -> tuple:
-        """find which region the coordinate belongs to"""
-        for reg_coord, region in self.regions.items():
-            x_bounds, y_bounds = region.limits
-       
-            if coordinates[0] in range(x_bounds[0], x_bounds[1]+self.offset_val) and \
-                (coordinates[1] in range(y_bounds[0], y_bounds[1]+self.offset_val)):
-                
-                return region.region_coordinate
-                 
-    def break_into_square_regions(self, num_regions:int, z_step:int) -> None:
-        """
-        break map into regions based on number of regions specified
-        need to refactor the setup of this system 
-        """
-        
-        n_row = m.sqrt(num_regions)
-        region_length = round(len(self.x_array)/n_row)
-        print("region length: ",region_length)
-        z_steps = list(np.arange(self.z_array[0],
-                                 self.z_array[-1]+self.offset_val, 
-                                 z_step))
-         
-        for i in range(0, len(self.x_array), region_length):
-            for j in range(0, len(self.y_array), region_length):
-                        
-                x_min_max = self.__get_cluster_bounds(i,region_length) #[x_min, x_max]
-                y_min_max = self.__get_cluster_bounds(j, region_length) #[y_min, y_max]
-                
-                cluster_coords = (i//region_length, j//region_length)
-                region_name = str(cluster_coords)
-                
-                bottom_side = self.__create_region_sides(
-                    x_min_max[0], x_min_max[1], y_min_max[0], z_steps,"lon")
-                top_side = self.__create_region_sides(
-                    x_min_max[0], x_min_max[1], y_min_max[1],z_steps, "lon")
-                
-                right_side = self.__create_region_sides(
-                    y_min_max[0], y_min_max[1], x_min_max[1], z_steps)
-                left_side = self.__create_region_sides(
-                    y_min_max[0], y_min_max[1], x_min_max[0],z_steps)
-                  
-                limits = (x_min_max, y_min_max) 
-                
-                region = Region(cluster_coords, limits)
-                region.region_sides['left_side'] = left_side
-                region.region_sides['right_side'] = right_side
-                region.region_sides['top_side'] = top_side
-                region.region_sides['bottom_side'] = bottom_side
-                
-                self.regions[region_name] = region
-
-                print("i and j are  " + str(i//region_length) + " and " + str(j//region_length))
-                # print("region name is " + region_name)
-                print("limits are " + str(limits))
-                print("\n")
-                
-        self.region_bound_x = (0,cluster_coords[0])
-        self.region_bound_y = (0,cluster_coords[1])
-                
-    def __is_out_bounds(self, region_coord:list) -> bool:
-        if (region_coord[0] > (self.region_bound_x[1]) or 
-            region_coord[0] < 0 or 
-            region_coord[1] > (self.region_bound_y[1]) or 
-            region_coord[1] < 0 ):
-            return True
-        
-        return False    
-    
-    def find_neighbor_regions(self) -> None:
-        """Find neighbors of each region and connect their sides
-        -from current region call out which side the neighbor is at ,
-        -from this side access the neighbor region and get the opposite side
-        -use this opposite side to access the location
-        -link these two together  
-        """
-        ss = 1
-        
-        move_dict = {'top_side': [0,ss],
-                     'bottom_side': [0,-ss],
-                     'left_side': [-ss,0],
-                     'right_side': [ss,0]}
-        
-        for region_key, region in self.regions.items():
-            region_coord = region.region_coordinate
-            
-            for move_key, move in move_dict.items():
-                neighbor_pos = (region_coord[0]+move[0], 
-                                region_coord[1]+move[1])
-                
-                if self.__is_out_bounds(neighbor_pos) == True:
-                    continue
-                           
-                neighbor_reg = self.regions[str(neighbor_pos)]
-                neighbor_side = neighbor_reg.get_opposite_side(move_key)
-                neighbor_coords = neighbor_reg.region_sides[neighbor_side]
-    
-                # region.neighbor_sides[neighbor_side] = neighbor_reg
-                region.set_neighbor_side(move_key, neighbor_coords)
-                region.set_neighbor_region(move_key, neighbor_pos)
-                
-    def main(self,num_regions:int, z_step:int):
-        self.break_into_square_regions(num_regions, z_step)
-        self.find_neighbor_regions()
-                
-    def plot_regions(self, threed=False) -> None:
-        """plot regions, threed plot is defaulted to false"""
-        if not self.regions:
-            print("no regions currently")
-        else:
-            self.fig = plt.figure(figsize=(8, 8))
-            self.ax = self.fig.add_subplot(111, projection="3d")
-            self.ax.set_xlim3d(self.x_array[0], self.x_array[-1])
-            self.ax.set_ylim3d(self.y_array[0], self.y_array[-1])
-            self.ax.set_zlim3d(self.z_array[0], self.z_array[-1])
-            self.title = self.ax.set_title("Regions",fontsize=18)
-            
-            color_list = sns.color_palette("hls", len(self.regions))
-            
-            if threed == False:
-                for i, (k, v) in enumerate(self.regions.items()):
-                    for r_k, r_v in v.region_sides.items():
-                        if r_v:
-                            x,y,z = zip(*r_v)
-                            self.ax.plot(x,y,color=color_list[i])
-            else:
-                print("plotting 3d")
-                for i, (k, v) in enumerate(self.regions.items()):
-                    for r_k, r_v in v.region_sides.items():
-                        if r_v:
-                            x,y,z = zip(*r_v)
-                            self.ax.scatter(x,y,z,color=color_list[i])
-                    
