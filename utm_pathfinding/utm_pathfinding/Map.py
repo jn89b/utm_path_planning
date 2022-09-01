@@ -5,7 +5,42 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import cnames
 from matplotlib import animation
 import seaborn as sns
+
+import itertools
+from itertools import combinations, permutations, product
+
 #https://stackoverflow.com/questions/36013063/what-is-the-purpose-of-meshgrid-in-python-numpy
+
+class AbstractNode():
+    def __init__(self, global_location, region_coord):
+        self.location = global_location
+        self.position = global_location
+        self.region_coord = region_coord
+        self.level = None
+        self.node_type = None
+    
+    def set_cost(self,cost):
+        """this is the edge cost"""
+        self.cost = cost
+        
+    def set_node_type(self,node_type):
+        """set type of node, inter connects regions, intra connects within"""
+        if node_type == "INTER":
+            self.node_type = "INTER"
+        if node_type == "INTRA":
+            self.node_type = "INTRA"
+                            
+    def __get_comparison(self):
+        return (tuple(self.location), self.node_type)
+            
+    def __eq__(self, other):
+        return (self.location, self.node_type) == (other.location, other.node_type)
+        
+    def __ne__(self, other):
+        return (not self.__eq__(other))
+    
+    def __hash__(self):
+        return hash(self.__get_comparison())
 
 class Region(object):
     def __init__(self, region_coord:tuple, limits:list) -> None:
@@ -17,6 +52,11 @@ class Region(object):
         
         #this will be appended to the same side of the region
         self.neighbor_sides = {'left_side': None,
+                             'right_side': None,
+                             'bottom_side': None,
+                             'top_side': None}
+        
+        self.neighbor_regions = {'left_side': None,
                              'right_side': None,
                              'bottom_side': None,
                              'top_side': None}
@@ -36,12 +76,19 @@ class Region(object):
     def set_neighbor_side(self, adjacent_key:str, neighbor_coords:list) -> None:
         self.neighbor_sides[adjacent_key] = neighbor_coords
    
+    def set_neighbor_region(self, adjacent_key:str, neighbor_reg_coord:list) -> None:
+        """insert the region coordinate of neighbor from which side"""
+        self.neighbor_regions[adjacent_key] = neighbor_reg_coord
+
 class AbstractGraph(object):
     def __init__(self, map_area:object) -> None:
         """map and graph data"""
         self.map = map_area
-        self.graph = set()
-    
+        self.graph = {}
+        self.weight = 1
+        self.intra_type = "INTRA"
+        self.inter_type = "INTER"
+        
     def build_graph(self) -> None:
         """build graph given map area"""
         self.build_corridors()
@@ -50,12 +97,153 @@ class AbstractGraph(object):
         """
         find all sides or entrances, call out map region dictionary
         in each region dictionary pull out the neighbors of that side
-        create abstract nodes 
+        check if obstacle in this
+        if not:
+            create abstract nodes
+            connect nodes together 
         """
         for reg_key, region in self.map.regions.items():
-             
-            pass
+
+            for (side_key,sides), (nei_key,nei_sides) in \
+                zip(region.region_sides.items(), region.neighbor_sides.items()):
+                
+                    if sides == None or nei_sides == None:
+                        continue
+                    
+                    for (side_coord,nei_coord) in zip(sides,nei_sides):
+                        reg_node = AbstractNode(side_coord, region.region_coordinate)
+                        nei_reg_coord = region.neighbor_regions[side_key]
+                        nei_node = AbstractNode(nei_coord, nei_reg_coord)
+                        
+                        self.__add_node(reg_node)
+                        self.__add_node(nei_node)
+                        self.__add_edge(
+                            reg_node,nei_node, self.weight, self.inter_type)
+
+    def build_airways(self) -> None:
+        """
+        within each region look at all sides and connect them to each combination
+        - loop through reach regions 
+        - create a list of inner_connections
+            - loop through each side of region 
+            - append side coordinates to inner_connections 
+            - get all combinations for same side 
+        
+        """
+        for idx, (reg_key, region) in enumerate(self.map.regions.items()):
+            region_coord = region.region_coordinate
+            inner_connections = []
+            inner_sets = []
+            print("working with region", region.region_coordinate)
+            for edge_side, location in region.region_sides.items():
+                inner_connections.append(location)
+                
+                #get all permuations for nodes on the same side
+                same_side_combos = list(combinations(location, 2))
+                for same_side in same_side_combos:
+                    inner_sets.append(same_side)
+            
+            #add all the intra nodes between the inner sides so left and right, etc
+            for r in itertools.chain(product(inner_connections[0], inner_connections[1])
+                                     , product(inner_connections[1], inner_connections[0])):
+                inner_sets.append(r)
+                
+            intra_connections_list = inner_sets
+
+            #add all the intra nodes between the adjacent nodes need to do Astar to find distance
+            for intra_connections in intra_connections_list:
+                intra_node1 = AbstractNode(intra_connections[0], region_coord)
+                intra_node2 = AbstractNode(intra_connections[1], region_coord)
+                
+                distance = self.compute_actual_euclidean(intra_node1.location, intra_node2.location)
+                #distance = self.__search_for_distance(intra_node1, intra_node2, config_space, config_bounds)
+                self.__add_edge(intra_node1, intra_node2, distance, self.intra_type)
     
+    def compute_actual_euclidean(self, position:list, goal:list) -> float:
+        distance =  (((position[0] - goal[0]) ** 2) + 
+                           ((position[1] - goal[1]) ** 2) +
+                           ((position[2] - goal[2]) ** 2))**(1/2)
+        
+        return distance
+            
+    def insert_temp_nodes(self, location:tuple, height_bound:float) -> None:
+        """insert temp nodes into the graph takes in the AbstractNode, level, 
+        and hash key name to be inserted 
+        - use methods to determine cluster
+        - connect to border
+        - set level
+        """
+        region_coords = self.map.find_which_region(location)
+        #print("cluster coords are", region_coords)
+        temp_node = AbstractNode(location , region_coords)        
+        self.connect_to_border(temp_node, str(location), height_bound)
+
+        
+    def connect_to_border(self,node:object, key_name:str, height_limit:float) -> None:
+        """connect borders to the map, I should have this in the graph class but define the key value
+        so set key to start and goal to make it temporary"""
+        offset_limit = height_limit #this is dumb should have this parameterized
+        height_bounds = [node.location[2]-offset_limit, node.location[2]+offset_limit]
+        print("height bounds are", height_bounds)
+        mapped_entrances_start = self.map.regions[str(node.region_coord)].region_sides
+        
+        for entrance, entrance_list in mapped_entrances_start.items():
+            for entrance_loc in entrance_list:
+                """do a check for ranges don't want to connect to areas at higher places"""
+                if entrance_loc[2] > height_bounds[0] and entrance_loc[2] < height_bounds[1]:
+                    # config_space = self.map.regions[str(node.region_coord)].cluster_space
+                    # config_bounds = self.map.regions[str(node.region_coord)].limits
+                    intra_node2 = AbstractNode(entrance_loc, node.region_coord)
+                    distance = self.compute_actual_euclidean(node.location, intra_node2.location)
+                    #distance = self.__search_for_distance(node, intra_node2, config_space, config_bounds)
+                    #probably should refactor this 
+                    self.__add_temp_edges(
+                        node, intra_node2, distance, self.intra_type, key_name)
+                else:
+                    continue
+                     
+    def __add_node(self, node:object) -> None:
+        """add node to search graph"""
+        if str(node.location) in self.graph:
+            self.graph[str(node.location)].add(node)
+        else:
+            self.graph[str(node.location)] = set([node])
+                  
+    def __add_temp_edges(self, temp_node, node2, weight,  node_type, key_name):
+        """adds the temporary node and connects it with other nodes in the hashtable"""
+        temp_node.set_cost(weight)
+        node2.set_cost(weight)
+        
+        temp_node.set_node_type(node_type)
+        node2.set_node_type(node_type)
+        
+        #check if intra node connections exists
+        if not str(key_name) in self.graph:
+            self.graph[str(key_name)] = set([temp_node])
+            
+        if not str(node2.location) in self.graph:
+            self.graph[str(node2.location)] = set([node2])
+        
+        self.graph[str(key_name)].add(node2)
+        self.graph[str(node2.location)].add(temp_node)
+            
+    def __add_edge(self, node1:object, node2:object, weight:int, node_type:str) -> None:
+        """makes edge between two nodes"""
+        node1.set_cost(weight)
+        node2.set_cost(weight)
+        
+        node1.set_node_type(node_type)
+        node2.set_node_type(node_type)
+        
+        #check if intra node connections exists
+        if not str(node1.location) in self.graph:
+            self.graph[str(node1.location)] = set([node1])
+            
+        if not str(node2.location) in self.graph:
+            self.graph[str(node2.location)] = set([node2])
+        
+        self.graph[str(node1.location)].add(node2)
+        self.graph[str(node2.location)].add(node1)
 
 class Map(object):
     """
@@ -207,9 +395,9 @@ class Map(object):
                 neighbor_side = neighbor_reg.get_opposite_side(move_key)
                 neighbor_coords = neighbor_reg.region_sides[neighbor_side]
     
-                region.neighbor_sides[neighbor_side] = neighbor_reg
-                region.set_neighbor_side(neighbor_side, neighbor_coords)
-                        
+                # region.neighbor_sides[neighbor_side] = neighbor_reg
+                region.set_neighbor_side(move_key, neighbor_coords)
+                region.set_neighbor_region(move_key, neighbor_pos)
                 
     def main(self,num_regions:int, z_step:int):
         self.break_into_square_regions(num_regions, z_step)

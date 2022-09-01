@@ -11,7 +11,7 @@ from matplotlib.colors import cnames
 from matplotlib import animation
 
 
-class Node():
+class Node(object):
     """
     parent = parent of current node
     posiition = position of node right now it will be x,y coordinates
@@ -40,6 +40,114 @@ class Node():
     def __repr__(self):
         return ('({0},{1})'.format(self.position, self.f))
 
+
+class AstarGraph(object):
+    def __init__(self, graph:object, reservation_table:set, 
+                 start_location:tuple, end_location:tuple) -> None:
+        self.graph = graph
+        self.reservation_table = reservation_table        
+        self.start_location = start_location
+        self.end_location = end_location
+        self.openset = PriorityQueue() # priority queue
+        self.closedset = {}
+        self.iter_limit = 10000 #this is stupid should be a paramter
+        
+
+    def __init_nodes(self) -> None:
+        """initialize start and end location nodes"""
+        start_node = Node(None, self.start_location)
+        start_node.g = start_node.h = start_node.f = 0
+        self.openset.put((start_node.f, start_node))
+        
+        end_node = Node(None, self.end_location)
+        end_node.g = end_node.h = end_node.f = 0
+    
+    def __check_at_goal(self, current_position:tuple) -> bool:
+        """check if we have arrived at the goal"""
+        if current_position == self.end_location:
+            return True
+
+    def __return_path_to_goal(self, current_node:tuple) -> list:
+        """return path to starts"""
+        path_goal  = []
+        current = current_node 
+        while current is not None:
+            path_goal.append(current.position)
+            current = current.parent
+        #reverse path
+        path_goal = path_goal[::-1]
+        print("path to goal is", path_goal)
+        
+        return path_goal
+    
+    def __unpack_tuple_coordinates(self, tuple_coords:tuple) -> list:
+        """return tuple coordinates as a list"""
+        return [tuple_coords[0],tuple_coords[1],tuple_coords[2]]
+
+    def __make_node(self, current_node:object, neighbor_node:object) -> object:
+        """inserts a new potential node to my neighbor based on neighbor
+        and references it to the current node as parent"""
+        new_node = Node(current_node, neighbor_node.location)
+        new_node.g = current_node.g + neighbor_node.cost
+        new_node.h = self.__compute_euclidean(neighbor_node.location, self.end_location)
+        new_node.f = new_node.g + new_node.h 
+        
+        return new_node
+    
+    def __compute_euclidean(self,position, goal) -> float:
+        """compute euclidean distance as heuristic"""
+        distance =  m.sqrt(((position[0] - goal[0]) ** 2) + 
+                            ((position[1] - goal[1]) ** 2) +
+                            ((position[2] - goal[2]) ** 2))
+        
+        return distance
+    
+    
+    def main(self) -> tuple:
+        """main implementation"""
+        self.__init_nodes()
+        
+        #setting a iter count to prevent it from running forever
+        iter_count = 0
+        while not self.openset.empty():
+            iter_count = iter_count + 1
+            #pop current node off
+            cost,current_node = self.openset.get()
+            
+            if iter_count >= self.iter_limit:
+                # iter count
+                return iter_count,self.closedset
+            
+            if self.__check_at_goal(current_node.position):
+                path_home = self.__return_path_to_goal(current_node)
+                return path_home
+
+            
+            self.closedset[str(current_node.position)] = current_node
+            
+            current_node_position = current_node.position
+            neighbors = self.graph[str(current_node_position)]
+            for neighbor in neighbors:
+                
+                if neighbor.location == current_node_position:
+                    continue
+                
+                if str(neighbor.location) in self.closedset:
+                    continue
+                
+                if neighbor.location[0:2] == current_node_position[0:2]:
+                    continue
+                
+                if tuple(neighbor.location) in self.reservation_table:
+                    continue
+                
+                #make new node
+                new_node = self.__make_node(current_node, neighbor)
+            
+                #put to open set
+                self.openset.put((new_node.f, new_node))
+            
+            iter_count +=1
 
 class AstarLowLevel(object):
     """might need to refactor the original Astar to include some set things

@@ -90,7 +90,7 @@ def unpack_tuple_coords(tuple_coord_list:tuple)-> tuple:
     x,y,z,t = zip(*tuple_coord_list) 
     return x,y,z,t
 
-
+#%%
 #% Main 
 if __name__ == '__main__':
     plt.close('all')
@@ -99,8 +99,8 @@ if __name__ == '__main__':
     z_config = 100
     map_area = Map.Map(x_config, y_config, z_config)    
     
-    n_regions = 4
-    z_step = 5
+    n_regions = 25
+    z_step = 25
     map_area.break_into_square_regions(n_regions, z_step)
     map_area.find_neighbor_regions()
     
@@ -111,6 +111,23 @@ if __name__ == '__main__':
     
     #position = map_area.unravel_meshgrid()
     #test = unravel_meshgrid(map_area.grid)
+#%% Create abstract graph
+    ab_graph = Map.AbstractGraph(map_area)
+    ab_graph.build_corridors()
+    ab_graph.build_airways()
+    test = ab_graph.graph
+    
+#%% astar graph test
+    start = (25,25,75)
+    end = (75, 73, 62)
+    
+    ab_graph.insert_temp_nodes(start, 30)
+    ab_graph.insert_temp_nodes(end, 30)
+    
+    reservation_table = {}
+    astar_graph = PathFinding.AstarGraph(ab_graph.graph, reservation_table,
+                                         start, end)
+    path = astar_graph.main()
     
 #%% Testing out time appendices for weighted astar
     uas_bubble = 6
