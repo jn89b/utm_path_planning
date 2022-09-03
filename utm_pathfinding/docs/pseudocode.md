@@ -32,6 +32,7 @@ class AbstractGraph():
             for (reg_side, nei_side) in zip()
 
     def build_inter_connections(self):
+        """build inter connections to connect to neighbors"""
         for e
         
 

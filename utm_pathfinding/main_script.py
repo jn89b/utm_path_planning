@@ -94,43 +94,50 @@ def unpack_tuple_coords(tuple_coord_list:tuple)-> tuple:
 #% Main 
 if __name__ == '__main__':
     plt.close('all')
-    x_config = 131
-    y_config = 131
+    x_config = 100
+    y_config = 100
     z_config = 75
     #works with 4
     gs = 10
+    
+    """regions only work with even square roots"""
     map_area = Map.Map(x_config, y_config, z_config, gs)    
     
-    n_regions = 9
+    n_regions = 16
     z_step = 5
     
-    map_area.break_into_square_regions(n_regions, z_step)
-    map_area.find_neighbor_regions()
+    map_area.break_into_square_regions(n_regions, z_step, 1)
+    map_area.find_neighbor_regions(1)
+
+    map_area.break_into_square_regions(4, z_step, 2)
+    map_area.find_neighbor_regions(2)
     
-    #create abstract graph
-    #do this by 
-    
-    map_area.plot_regions(True)
+    map_area.plot_regions(1, False)
     
     #position = map_area.unravel_meshgrid()
     #test = unravel_meshgrid(map_area.grid)
 #%% Create abstract graph
     ab_graph = Map.AbstractGraph(map_area)
-    ab_graph.build_corridors()
-    ab_graph.build_airways()
-    test_2 = ab_graph.graph
+    ab_graph.build_corridors(1)
+    ab_graph.build_airways(1)
+    
+    ab_graph.build_corridors(2)
+    ab_graph.build_airways(2)
+    # test_2 = ab_graph.graph
     
 #%% astar graph test
     start = (21,1,5)
     end = (93, 79, 20)
     
-    ab_graph.insert_temp_nodes(start, 20)
-    ab_graph.insert_temp_nodes(end, 20)
+    ab_graph.insert_temp_nodes(start, 20, 2)
+    ab_graph.insert_temp_nodes(end, 20,2)
     test = ab_graph.graph
 
     
     reservation_table = {}
-    astar_graph = PathFinding.AstarGraph(ab_graph.graph, reservation_table,
+    
+    level_graph = ab_graph.graph_levels[str(2)]
+    astar_graph = PathFinding.AstarGraph(level_graph, reservation_table,
                                          start, end)
     path = astar_graph.main()
     
