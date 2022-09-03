@@ -94,20 +94,23 @@ def unpack_tuple_coords(tuple_coord_list:tuple)-> tuple:
 #% Main 
 if __name__ == '__main__':
     plt.close('all')
-    x_config = 100
-    y_config = 100
-    z_config = 100
-    map_area = Map.Map(x_config, y_config, z_config)    
+    x_config = 131
+    y_config = 131
+    z_config = 75
+    #works with 4
+    gs = 10
+    map_area = Map.Map(x_config, y_config, z_config, gs)    
     
-    n_regions = 25
-    z_step = 25
+    n_regions = 9
+    z_step = 5
+    
     map_area.break_into_square_regions(n_regions, z_step)
     map_area.find_neighbor_regions()
     
     #create abstract graph
     #do this by 
-    #    
-    # map_area.plot_regions(True)
+    
+    map_area.plot_regions(True)
     
     #position = map_area.unravel_meshgrid()
     #test = unravel_meshgrid(map_area.grid)
@@ -115,19 +118,34 @@ if __name__ == '__main__':
     ab_graph = Map.AbstractGraph(map_area)
     ab_graph.build_corridors()
     ab_graph.build_airways()
-    test = ab_graph.graph
+    test_2 = ab_graph.graph
     
 #%% astar graph test
-    start = (25,25,75)
-    end = (75, 73, 62)
+    start = (21,1,5)
+    end = (93, 79, 20)
     
-    ab_graph.insert_temp_nodes(start, 30)
-    ab_graph.insert_temp_nodes(end, 30)
+    ab_graph.insert_temp_nodes(start, 20)
+    ab_graph.insert_temp_nodes(end, 20)
+    test = ab_graph.graph
+
     
     reservation_table = {}
     astar_graph = PathFinding.AstarGraph(ab_graph.graph, reservation_table,
                                          start, end)
     path = astar_graph.main()
+    
+    #%% animte high level path
+    paths = [path]
+        
+    animate_uas = PathFinding.AnimateMultiUAS(uas_paths=paths, 
+                                  method_name= str(len(paths)) + " UAS")
+    
+
+    animate_uas.plot_path(x_bounds=[0, x_config], 
+                                  y_bounds=[0, y_config], 
+                                  z_bounds=[0, z_config])
+    
+    
     
 #%% Testing out time appendices for weighted astar
     uas_bubble = 6

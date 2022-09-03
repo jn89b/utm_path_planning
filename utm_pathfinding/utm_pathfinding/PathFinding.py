@@ -50,9 +50,8 @@ class AstarGraph(object):
         self.end_location = end_location
         self.openset = PriorityQueue() # priority queue
         self.closedset = {}
-        self.iter_limit = 10000 #this is stupid should be a paramter
+        self.iter_limit = 75000 #this is stupid should be a paramter
         
-
     def __init_nodes(self) -> None:
         """initialize start and end location nodes"""
         start_node = Node(None, self.start_location)
@@ -87,21 +86,31 @@ class AstarGraph(object):
     def __make_node(self, current_node:object, neighbor_node:object) -> object:
         """inserts a new potential node to my neighbor based on neighbor
         and references it to the current node as parent"""
+
+        distance = self.__compute_euclidean(neighbor_node.location, self.end_location)
+        extra_reward = 1
+        
+        if neighbor_node.node_type is not None and distance >= 30:
+            if neighbor_node.node_type == "INTER":
+                # print("neighbor_node", neighbor_node.region_coord)
+                extra_reward == 1E-1
+        elif distance <= 50:
+            extra_reward == 1E-6
+        
         new_node = Node(current_node, neighbor_node.location)
         new_node.g = current_node.g + neighbor_node.cost
-        new_node.h = self.__compute_euclidean(neighbor_node.location, self.end_location)
-        new_node.f = new_node.g + new_node.h 
+        new_node.h = distance
+        new_node.f = new_node.g + (new_node.h * extra_reward) 
         
         return new_node
     
     def __compute_euclidean(self,position, goal) -> float:
         """compute euclidean distance as heuristic"""
         distance =  m.sqrt(((position[0] - goal[0]) ** 2) + 
-                            ((position[1] - goal[1]) ** 2) +
-                            ((position[2] - goal[2]) ** 2))
+                            ((position[1] - goal[1]) ** 2))
+                            #((position[2] - goal[2]) ** 2))
         
         return distance
-    
     
     def main(self) -> tuple:
         """main implementation"""
@@ -113,7 +122,7 @@ class AstarGraph(object):
             iter_count = iter_count + 1
             #pop current node off
             cost,current_node = self.openset.get()
-            
+            # print("current node is", current_node)
             if iter_count >= self.iter_limit:
                 # iter count
                 return iter_count,self.closedset
@@ -122,11 +131,11 @@ class AstarGraph(object):
                 path_home = self.__return_path_to_goal(current_node)
                 return path_home
 
-            
             self.closedset[str(current_node.position)] = current_node
             
             current_node_position = current_node.position
             neighbors = self.graph[str(current_node_position)]
+
             for neighbor in neighbors:
                 
                 if neighbor.location == current_node_position:
@@ -135,8 +144,8 @@ class AstarGraph(object):
                 if str(neighbor.location) in self.closedset:
                     continue
                 
-                if neighbor.location[0:2] == current_node_position[0:2]:
-                    continue
+                # if neighbor.location[0:2] == current_node_position[0:2]:
+                #     continue
                 
                 if tuple(neighbor.location) in self.reservation_table:
                     continue
@@ -148,6 +157,9 @@ class AstarGraph(object):
                 self.openset.put((new_node.f, new_node))
             
             iter_count +=1
+            
+        if self.openset.empty():
+            print("set is empty")
 
 class AstarLowLevel(object):
     """might need to refactor the original Astar to include some set things
@@ -368,11 +380,11 @@ class AstarLowLevel(object):
                 #print("child.position", child.position)
                 if self.is_target_close(current_node.position, self.end_node):
                     cost = self.compute_euclidean(current_node.position, child)
-                    child.g = current_node.g + cost
+                    child.g = current_node.g + 1#cost
                     child.h = self.compute_euclidean(child.position, self.end_node)
                     dynamic_weight = 0.75
                     child.f = child.g + (child.h *penalty*dynamic_weight)
-                    child.total_distance = child.g + cost 
+                    child.total_distance = child.g + 1#cost 
                     child.total_time = round(child.total_distance/ self.vel)
                 else:
                     dynamic_weight = self.weight_factor
@@ -417,6 +429,20 @@ class AnimateMultiUAS():
         
         return self.graph
 
+    def plot_path(self, x_bounds:list,y_bounds:list, z_bounds:list) -> None:
+        """plot paths"""
+        self.set_size_params(x_bounds, y_bounds, z_bounds)
+        for i, path in enumerate(self.uas_paths):
+            x = [position[0] for position in path]
+            y = [position[1] for position in path]
+            z = [position[2] for position in path]
+            
+            self.graph = self.plot_initial_final(path[0], 
+                                                    path[-1], 
+                                                    self.color_list[i])
+            
+            self.ax.scatter(x,y,z, marker='o', color=self.color_list[i], s=100)
+        
     def init(self):
         for line, pt in zip(self.lines, self.pts):
             line.set_data([], [])
