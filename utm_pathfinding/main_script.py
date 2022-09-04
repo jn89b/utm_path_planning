@@ -92,6 +92,73 @@ def unpack_tuple_coords(tuple_coord_list:tuple)-> tuple:
     x,y,z,t = zip(*tuple_coord_list) 
     return x,y,z,t
 
+def smooth_high_path(path:list, path_to_append:list) -> list:
+    """pass"""
+    ## this smooths the path
+    for k, p in enumerate(path): 
+
+        if k+1 >= len(path):
+            path_to_append.append(p)
+            break                    
+        
+        if p in path_to_append:
+            continue
+        
+        dist = math.dist(p, path[k+1])
+        if abs(dist) <= 0.75:
+            continue    
+        
+        path_to_append.append(p)
+        
+    return path_to_append
+
+
+def get_refine_path(graph:np.meshgrid, abstract_path:list, 
+                    reservation_table:set, 
+                    col_bubble:int,weight_factor:int, curr_time:int) -> tuple:
+    """get refined path for locations -> should use a set for obst coords"""
+    waypoint_coords = []
+    iteration_cnt = 0
+    search_cnt = 0
+    
+    if isinstance(abstract_path , int):
+        return [],iteration_cnt,search_cnt
+    
+    if abstract_path is None:
+        return [],iteration_cnt,search_cnt
+
+    for i in range(len(abstract_path)):
+        if i+1>= len(abstract_path):
+            #print("final iteration", iteration_cnt)
+            return waypoint_coords, iteration_cnt, search_cnt
+        
+        # lowastar = PathFinding.AstarLowLevel(
+        #     graph, reservation_table, obstacle_coords,
+        #     abstract_path[i], abstract_path[i+1], col_bubble, weighted_h
+        #     )
+        
+        lowastar = PathFinding.AstarLowLevel(graph, 
+                              reservation_table,
+                              abstract_path[i], abstract_path[i+1], curr_vel, 
+                              col_bubble, weight_factor, curr_time)
+        
+
+        waypoints= lowastar.main()
+        if waypoints is not None:
+            #get time complexity and space complexity
+            iteration_cnt += waypoints[1]
+            search_cnt += len(waypoints[2])
+            #print("length of dictionary is", len(waypoints[2]))
+        
+        if not waypoints:
+            return [],iteration_cnt,search_cnt
+        
+        if isinstance(waypoints[0], list): 
+            waypoint_coords.extend(waypoints[0])
+        else:
+            #print("final iteration", iteration_cnt)
+            return waypoint_coords, iteration_cnt, search_cnt
+
 #%%
 #% Main 
 if __name__ == '__main__':
@@ -107,6 +174,7 @@ if __name__ == '__main__':
     
     n_regions = 16
     z_step = 5
+    max_level = 2
     
     map_area.break_into_square_regions(n_regions, z_step, 1)
     map_area.find_neighbor_regions(1)
@@ -150,16 +218,17 @@ if __name__ == '__main__':
     end = (193, 179, 15)
     
     #this will loop and add the temp nodes in each level    
-    for i in range(1,2+1):
+    for i in range(1,max_level+1):
         ab_graph.insert_temp_nodes(start, 20, i)
         ab_graph.insert_temp_nodes(end, 20, i)
 
     reservation_table = {}
     curr_vel = 1 #m/Ss
+    curr_time = 0
 
     high_paths = []
-    for i in reversed(range(2+1)):
-        
+    
+    for i in reversed(range(max_level+1)):
         if i == 0:
             break
         
@@ -167,7 +236,7 @@ if __name__ == '__main__':
         if i == 2:            
             level_graph = ab_graph.graph_levels[str(i)]
             astar_graph = PathFinding.AstarGraph(level_graph, reservation_table,
-                                                start, end, curr_vel)
+                                                start, end, curr_vel, curr_time)
             path = astar_graph.main()
             
         else:
@@ -181,24 +250,11 @@ if __name__ == '__main__':
                 
                 level_graph = ab_graph.graph_levels[str(i)]
                 astar_graph = PathFinding.AstarGraph(level_graph, reservation_table,
-                                                    coords, path[j+1], curr_vel)                
+                                                    coords, path[j+1], curr_vel, curr_time)                
                 some_path = astar_graph.main()
                             
-                ## this smooths the path
-                for k, p in enumerate(some_path): 
-                    
-                    if k+1 >= len(some_path):
-                        high_paths.append(p)
-                        break                    
-                    
-                    if p in high_paths:
-                        continue
-                    
-                    dist = math.dist(p, some_path[k+1])
-                    if abs(dist) <= 0.75:
-                        continue    
-                    
-                    high_paths.append(p)
+                smooth_high_path(some_path, high_paths)
+
                 
     #%% animte high level path
     plt.close('all')
@@ -218,6 +274,74 @@ if __name__ == '__main__':
     animate_uas.plot_path(x_bounds=[0, x_config], 
                                   y_bounds=[0, y_config], 
                                   z_bounds=[0, z_config])
+    
+#%% High level search with low level search
+    uas_bubble = 6
+    uas_radius = uas_bubble/2     
+    bubble = create_bubble_bounds(uas_radius)
+
+    """
+    2 UAS with opposite start and end position, 
+    images instead of points for traversal 
+    """
+    curr_vel = 10 #m/Ss
+    vel_2 = 3 #m/s
+    curr_time = 0 #s
+    time_inflate = 15
+    col_bubble = 4
+    weight_factor = 10
+    reserved_table = {}
+    
+    start_list = [[(0,0,10), (x_config-1,y_config-1,10)]]
+                  #[(x_config,0,10), (0,y_config-1,10)]]
+    
+    for start in start_list:
+        print("starting at", start[1]) 
+        
+        for index in range(1,max_level+1):
+            ab_graph.insert_temp_nodes(start[0], 20, index)
+            ab_graph.insert_temp_nodes(start[1], 20, index)
+    
+        reservation_table = {}
+        
+        """high path search"""
+        high_paths = []
+        for i in reversed(range(2+1)):
+            if i == 0:
+                break
+            
+            ##start level
+            if i == 2:            
+                level_graph = ab_graph.graph_levels[str(i)]
+                astar_graph = PathFinding.AstarGraph(level_graph, reservation_table,
+                                                    start[0], start[1], curr_vel, curr_time)
+                path = astar_graph.main()
+                
+            else:
+                for j, coords in enumerate(path):
+                    if j+1 >= len(path):
+                        break
+                    
+                    ab_graph.insert_temp_nodes(coords, 20, i)
+                    ab_graph.insert_temp_nodes(path[j+1], 20, i)
+                    
+                    level_graph = ab_graph.graph_levels[str(i)]
+                    astar_graph = PathFinding.AstarGraph(level_graph, reservation_table,
+                                                        coords, path[j+1], curr_vel, curr_time)                
+                    some_path = astar_graph.main()
+                                
+                    ## this smooths the path
+                    high_paths = smooth_high_path(some_path, high_paths)
+
+                        
+        """low search"""
+        # for i,wp in enumerate(high_paths):
+        #     if i+1>=len(high_paths):
+        #         print("done")
+        refined_path = get_refine_path(map_area.meshgrid, high_paths, 
+                                       reserved_table,
+                                       col_bubble, weight_factor, curr_time)
+            
     
 #%% Testing out time appendices for weighted astar
     uas_bubble = 6
@@ -243,7 +367,7 @@ if __name__ == '__main__':
     reserved_table = set()
     
     paths = [] 
-    for i,start in enumerate(start_list):
+    for start in start_list:
         astar = PathFinding.AstarLowLevel(map_area.meshgrid, 
                               reserved_table,
                               start[0], start[1], curr_vel, 

@@ -43,7 +43,8 @@ class Node(object):
 
 class AstarGraph(object):
     def __init__(self, graph:object, reservation_table:set, 
-                 start_location:tuple, end_location:tuple, vel=None) -> None:
+                 start_location:tuple, end_location:tuple, vel=None,
+                 curr_time = None) -> None:
         self.graph = graph
         self.reservation_table = reservation_table        
         self.start_location = start_location
@@ -57,6 +58,10 @@ class AstarGraph(object):
         else:
             self.vel = 1 #1m/s
         
+        if curr_time != None:
+            self.curr_time = curr_time #m/s
+        else:
+            self.curr_time = 1 #1m/s
         
     def __init_nodes(self) -> None:
         """initialize start and end location nodes"""
@@ -104,7 +109,8 @@ class AstarGraph(object):
         new_node.h = distance
         new_node.f = new_node.g + (new_node.h * penalty)
         new_node.total_distance = new_node.g + 1#cost 
-        new_node.total_time = round(new_node.total_distance/ self.vel)
+        new_node.total_time = round(new_node.total_distance/ self.vel) + self.curr_time
+        
         return new_node
     
     def __compute_euclidean(self,position, goal) -> float:
@@ -177,8 +183,10 @@ class AstarLowLevel(object):
                 if positive then we want to go down so set cost to up higher
     
     """
-    def __init__(self, grid, reservation_table,start, goal, vel, 
-                 col_bubble, weight_factor, curr_time):
+    def __init__(self, grid, reservation_table,
+                 start, goal, vel, 
+                 col_bubble, weight_factor, curr_time) -> None:
+        
         self.grid = grid
         self.grid_x = len(grid[0])
         self.grid_y = len(grid[1])
@@ -388,7 +396,7 @@ class AstarLowLevel(object):
                     dynamic_weight = 0.75
                     child.f = child.g + (child.h *penalty*dynamic_weight)
                     child.total_distance = child.g + 1#cost 
-                    child.total_time = round(child.total_distance/ self.vel)
+                    child.total_time = round(child.total_distance/ self.vel)+ self.curr_time
                 else:
                     dynamic_weight = self.weight_factor
                     cost = self.compute_euclidean(current_node.position, child)
@@ -396,7 +404,7 @@ class AstarLowLevel(object):
                     child.h = self.compute_euclidean(child.position, self.end_node)
                     child.f = child.g + (child.h *penalty*dynamic_weight)
                     child.total_distance = child.g + cost
-                    child.total_time = round(child.total_distance/ self.vel)
+                    child.total_time = round(child.total_distance/ self.vel) + self.curr_time
                 
                 self.openset.put((child.f, child))
                 
