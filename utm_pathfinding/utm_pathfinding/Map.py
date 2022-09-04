@@ -153,51 +153,38 @@ class AbstractGraph(object):
         number of connectsion = entrace_con + (m-1)(n) 
         where m is the number of nodes in the current location and n is the 
         number of nodes in the adjacent side
+        
+        need to fix this
         """
         regions_dict = self.map.level_regions[str(level)]
-        
-        for idx, (reg_key, region) in enumerate(regions_dict.items()):
-                        
-            region_coord = region.region_coordinate
-            inner_connections = []
-            inner_sets = []
-            
-            for edge_side, location in region.region_sides.items():
-                
-                if not location:
-                    print("no location", edge_side)
-                    continue
-                
-                inner_connections.append(location)
-                
-                #get all permuations for nodes on the same side
-                same_side_combos = list(combinations(location, 2))
-                for same_side in same_side_combos:
-                    inner_sets.append(same_side)
-            
-            #add all the intra nodes between the inner sides so left and right, etc
-            for r in itertools.chain(product(inner_connections[0], inner_connections[1])
-                                     , product(inner_connections[1], inner_connections[0])):
-                inner_sets.append(r)
-                
-            intra_connections_list = inner_sets
-            
-            #this is a test to reduce the grid
-            if idx == 4:
-                return intra_connections_list, inner_sets
+        graph = self.graph_levels[str(level)]
 
-            #add all the intra nodes between the adjacent nodes need to do Astar to find distance
-            for intra_connections in intra_connections_list:
-                intra_node1 = AbstractNode(intra_connections[0], region_coord)
-                intra_node1.set_node_level(level)
-                
-                intra_node2 = AbstractNode(intra_connections[1], region_coord)
-                intra_node2.set_node_level(level)
-                
-                distance = self.compute_actual_euclidean(intra_node1.location, intra_node2.location)
-                #distance = self.__search_for_distance(intra_node1, intra_node2, config_space, config_bounds)
-                self.__add_edge(intra_node1, intra_node2, level, distance, self.intra_type)
-    
+        for (reg_key, region) in regions_dict.items():
+           
+            region_coord = region.region_coordinate
+            print("region coord: ", region_coord)
+            
+            all_sides = []
+            for side_key, side in region.region_sides.items():
+                if side:
+                    all_sides.extend(side)
+                                    
+            for position in all_sides:
+                if position not in graph:
+                    neighbors = [x for x in all_sides if x != position]
+                    
+                    for neighbor in neighbors:
+                        intra_node1 = AbstractNode(position, region_coord)
+                        intra_node1.set_node_level(level)
+                        
+                        intra_node2 = AbstractNode(neighbor, region_coord)
+                        intra_node2.set_node_level(level)
+                        
+                        distance = self.compute_actual_euclidean(
+                            intra_node1.location, intra_node2.location)
+                        self.__add_edge(
+                            intra_node1, intra_node2, level, distance, self.intra_type)
+        
     def compute_actual_euclidean(self, position:list, goal:list) -> float:
         distance =  (((position[0] - goal[0]) ** 2) + 
                            ((position[1] - goal[1]) ** 2) +
@@ -488,9 +475,9 @@ class Map(object):
         else:
             self.fig = plt.figure(figsize=(8, 8))
             self.ax = self.fig.add_subplot(111, projection="3d")
-            self.ax.set_xlim3d(self.x_array[0], self.x_array[-1])
-            self.ax.set_ylim3d(self.y_array[0], self.y_array[-1])
-            self.ax.set_zlim3d(self.z_array[0], self.z_array[-1])
+            self.ax.set_xlim3d(self.x_array[0], self.x_array[-1]+1)
+            self.ax.set_ylim3d(self.y_array[0], self.y_array[-1]+1)
+            self.ax.set_zlim3d(self.z_array[0], self.z_array[-1]+1)
             self.title = self.ax.set_title("Regions",fontsize=18)
 
             regions = self.level_regions[str(level)]

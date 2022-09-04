@@ -43,14 +43,20 @@ class Node(object):
 
 class AstarGraph(object):
     def __init__(self, graph:object, reservation_table:set, 
-                 start_location:tuple, end_location:tuple) -> None:
+                 start_location:tuple, end_location:tuple, vel=None) -> None:
         self.graph = graph
         self.reservation_table = reservation_table        
         self.start_location = start_location
         self.end_location = end_location
         self.openset = PriorityQueue() # priority queue
         self.closedset = {}
-        self.iter_limit = 75000 #this is stupid should be a paramter
+        self.iter_limit = 25000 #this is stupid should be a paramter
+        
+        if vel != None:
+            self.vel = vel #m/s
+        else:
+            self.vel = 1 #1m/s
+        
         
     def __init_nodes(self) -> None:
         """initialize start and end location nodes"""
@@ -88,20 +94,17 @@ class AstarGraph(object):
         and references it to the current node as parent"""
 
         distance = self.__compute_euclidean(neighbor_node.location, self.end_location)
-        extra_reward = 1
-        
-        if neighbor_node.node_type is not None and distance >= 30:
-            if neighbor_node.node_type == "INTER":
-                # print("neighbor_node", neighbor_node.region_coord)
-                extra_reward == 1E-1
-        elif distance <= 50:
-            extra_reward == 1E-6
+        penalty = 1
+
+        if current_node.position[2] != neighbor_node.position[2]:
+            penalty = 1
         
         new_node = Node(current_node, neighbor_node.location)
         new_node.g = current_node.g + neighbor_node.cost
         new_node.h = distance
-        new_node.f = new_node.g + (new_node.h * extra_reward) 
-        
+        new_node.f = new_node.g + (new_node.h * penalty)
+        new_node.total_distance = new_node.g + 1#cost 
+        new_node.total_time = round(new_node.total_distance/ self.vel)
         return new_node
     
     def __compute_euclidean(self,position, goal) -> float:
@@ -442,6 +445,7 @@ class AnimateMultiUAS():
                                                     self.color_list[i])
             
             self.ax.scatter(x,y,z, marker='o', color=self.color_list[i], s=100)
+            self.ax.plot(x,y,z , color=self.color_list[i])
         
     def init(self):
         for line, pt in zip(self.lines, self.pts):

@@ -19,6 +19,8 @@ Break into clusters
 #% Import stuff here
 import numpy as np
 import matplotlib.pyplot as plt
+import math
+
 from mpl_toolkits.mplot3d import axes3d, Axes3D 
 
 #from src import PathFinding
@@ -94,8 +96,8 @@ def unpack_tuple_coords(tuple_coord_list:tuple)-> tuple:
 #% Main 
 if __name__ == '__main__':
     plt.close('all')
-    x_config = 100
-    y_config = 100
+    x_config = 200
+    y_config = 200
     z_config = 75
     #works with 4
     gs = 10
@@ -112,7 +114,8 @@ if __name__ == '__main__':
     map_area.break_into_square_regions(4, z_step, 2)
     map_area.find_neighbor_regions(2)
     
-    map_area.plot_regions(1, False)
+    map_area.plot_regions(1, True)
+    map_area.plot_regions(2, True)
     
     #position = map_area.unravel_meshgrid()
     #test = unravel_meshgrid(map_area.grid)
@@ -123,36 +126,98 @@ if __name__ == '__main__':
     
     ab_graph.build_corridors(2)
     ab_graph.build_airways(2)
-    # test_2 = ab_graph.graph
+    graph_levels = ab_graph.graph_levels['1']
+    region_levels = map_area.level_regions['1']
+#%% Testhing this out, I want to create all permutations, for graph should have 3 for each node
+    # graph = {}    
+    # for key, region in region_levels.items():
+    #         all_sides = []
+    #         for side_key, side in region.region_sides.items():
+    #             if side:
+    #                 all_sides.extend(side)
+                    
+                    
+    #         for position in all_sides:
+    #             if position not in graph:
+    #                 neighbors = [x for x in all_sides if x != position]
+                    
+    #                 for neighbor in neighbors:
+    #                     print(neighbor)
+                    
     
 #%% astar graph test
-    start = (21,1,5)
-    end = (93, 79, 20)
+    start = (21,1,25)
+    end = (193, 179, 15)
     
-    ab_graph.insert_temp_nodes(start, 20, 2)
-    ab_graph.insert_temp_nodes(end, 20,2)
-    test = ab_graph.graph
+    #this will loop and add the temp nodes in each level    
+    for i in range(1,2+1):
+        ab_graph.insert_temp_nodes(start, 20, i)
+        ab_graph.insert_temp_nodes(end, 20, i)
 
-    
     reservation_table = {}
-    
-    level_graph = ab_graph.graph_levels[str(2)]
-    astar_graph = PathFinding.AstarGraph(level_graph, reservation_table,
-                                         start, end)
-    path = astar_graph.main()
-    
+    curr_vel = 1 #m/Ss
+
+    high_paths = []
+    for i in reversed(range(2+1)):
+        
+        if i == 0:
+            break
+        
+        ##start level
+        if i == 2:            
+            level_graph = ab_graph.graph_levels[str(i)]
+            astar_graph = PathFinding.AstarGraph(level_graph, reservation_table,
+                                                start, end, curr_vel)
+            path = astar_graph.main()
+            
+        else:
+            for j, coords in enumerate(path):
+                if j+1 >= len(path):
+                    print("im done", i, coords)
+                    break
+                
+                ab_graph.insert_temp_nodes(coords, 20, i)
+                ab_graph.insert_temp_nodes(path[j+1], 20, i)
+                
+                level_graph = ab_graph.graph_levels[str(i)]
+                astar_graph = PathFinding.AstarGraph(level_graph, reservation_table,
+                                                    coords, path[j+1], curr_vel)                
+                some_path = astar_graph.main()
+                            
+                ## this smooths the path
+                for k, p in enumerate(some_path): 
+                    
+                    if k+1 >= len(some_path):
+                        high_paths.append(p)
+                        break                    
+                    
+                    if p in high_paths:
+                        continue
+                    
+                    dist = math.dist(p, some_path[k+1])
+                    if abs(dist) <= 0.75:
+                        continue    
+                    
+                    high_paths.append(p)
+                
     #%% animte high level path
+    plt.close('all')
     paths = [path]
         
     animate_uas = PathFinding.AnimateMultiUAS(uas_paths=paths, 
                                   method_name= str(len(paths)) + " UAS")
     
-
     animate_uas.plot_path(x_bounds=[0, x_config], 
                                   y_bounds=[0, y_config], 
                                   z_bounds=[0, z_config])
+
+
+    animate_uas = PathFinding.AnimateMultiUAS(uas_paths=[high_paths], 
+                                  method_name= str(len(paths)) + " UAS")
     
-    
+    animate_uas.plot_path(x_bounds=[0, x_config], 
+                                  y_bounds=[0, y_config], 
+                                  z_bounds=[0, z_config])
     
 #%% Testing out time appendices for weighted astar
     uas_bubble = 6
