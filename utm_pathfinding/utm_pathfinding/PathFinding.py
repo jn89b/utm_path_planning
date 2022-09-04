@@ -10,6 +10,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import cnames
 from matplotlib import animation
 
+import logging
 
 class Node(object):
     """
@@ -220,6 +221,9 @@ class AstarLowLevel(object):
         
         start_node = Node(None,start_position)
         start_node.g = start_node.h = start_node.f = 0
+        start_node.total_time = 0 + self.curr_time
+        start_node.total_distance = 0 
+         
         self.openset.put((start_node.f, start_node))
         
         #self.openset.append(start_node)
@@ -333,7 +337,7 @@ class AstarLowLevel(object):
         while not self.openset.empty():
             count = count + 1
             
-            if count >= 10000:
+            if count >= 20000:
                 print("iterations too much for low level")
                 return 0, count, self.closedset
             
@@ -391,11 +395,11 @@ class AstarLowLevel(object):
                 #print("child.position", child.position)
                 if self.is_target_close(current_node.position, self.end_node):
                     cost = self.compute_euclidean(current_node.position, child)
-                    child.g = current_node.g + 1#cost
+                    child.g = current_node.g + cost 
                     child.h = self.compute_euclidean(child.position, self.end_node)
                     dynamic_weight = 0.75
                     child.f = child.g + (child.h *penalty*dynamic_weight)
-                    child.total_distance = child.g + 1#cost 
+                    child.total_distance = child.g 
                     child.total_time = round(child.total_distance/ self.vel)+ self.curr_time
                 else:
                     dynamic_weight = self.weight_factor
@@ -403,16 +407,14 @@ class AstarLowLevel(object):
                     child.g = current_node.g + cost
                     child.h = self.compute_euclidean(child.position, self.end_node)
                     child.f = child.g + (child.h *penalty*dynamic_weight)
-                    child.total_distance = child.g + cost
-                    child.total_time = round(child.total_distance/ self.vel) + self.curr_time
-                
+                    child.total_distance = child.g
+                    child.total_time = round(child.total_distance/ self.vel) + self.curr_time 
+
                 self.openset.put((child.f, child))
                 
         if self.openset.empty():
-            print("open set is empty")
+            #print("open set is empty")
             return 0, count, self.closedset 
-
-
 
 class AnimateMultiUAS():
     def __init__(self, uas_paths:list, method_name:str):

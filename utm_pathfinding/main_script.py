@@ -116,7 +116,10 @@ def smooth_high_path(path:list, path_to_append:list) -> list:
 def get_refine_path(graph:np.meshgrid, abstract_path:list, 
                     reservation_table:set, 
                     col_bubble:int,weight_factor:int, curr_time:int) -> tuple:
-    """get refined path for locations -> should use a set for obst coords"""
+    """
+    get refined path for locations -> should use a set for obst coords
+    returns tuple of waypoints, iteration count, and search count 
+    """
     waypoint_coords = []
     iteration_cnt = 0
     search_cnt = 0
@@ -132,20 +135,17 @@ def get_refine_path(graph:np.meshgrid, abstract_path:list,
             #print("final iteration", iteration_cnt)
             return waypoint_coords, iteration_cnt, search_cnt
         
-        # lowastar = PathFinding.AstarLowLevel(
-        #     graph, reservation_table, obstacle_coords,
-        #     abstract_path[i], abstract_path[i+1], col_bubble, weighted_h
-        #     )
-        
         lowastar = PathFinding.AstarLowLevel(graph, 
                               reservation_table,
                               abstract_path[i], abstract_path[i+1], curr_vel, 
                               col_bubble, weight_factor, curr_time)
-        
-
+    
         waypoints= lowastar.main()
+        
         if waypoints is not None:
             #get time complexity and space complexity
+            curr_time = waypoints[0][-1][-1]
+            print("current time is now", curr_time)
             iteration_cnt += waypoints[1]
             search_cnt += len(waypoints[2])
             #print("length of dictionary is", len(waypoints[2]))
@@ -156,15 +156,15 @@ def get_refine_path(graph:np.meshgrid, abstract_path:list,
         if isinstance(waypoints[0], list): 
             waypoint_coords.extend(waypoints[0])
         else:
-            #print("final iteration", iteration_cnt)
+            print("final iteration", iteration_cnt)
             return waypoint_coords, iteration_cnt, search_cnt
 
 #%%
 #% Main 
 if __name__ == '__main__':
     plt.close('all')
-    x_config = 200
-    y_config = 200
+    x_config = 100
+    y_config = 100
     z_config = 75
     #works with 4
     gs = 10
@@ -196,6 +196,7 @@ if __name__ == '__main__':
     ab_graph.build_airways(2)
     graph_levels = ab_graph.graph_levels['1']
     region_levels = map_area.level_regions['1']
+    
 #%% Testhing this out, I want to create all permutations, for graph should have 3 for each node
     # graph = {}    
     # for key, region in region_levels.items():
@@ -284,15 +285,17 @@ if __name__ == '__main__':
     2 UAS with opposite start and end position, 
     images instead of points for traversal 
     """
-    curr_vel = 10 #m/Ss
+    uas_paths = []
+    curr_vel = 2 #m/Ss
     vel_2 = 3 #m/s
     curr_time = 0 #s
-    time_inflate = 15
+    time_inflate = 5
     col_bubble = 4
     weight_factor = 10
-    reserved_table = {}
+    reserved_table = set()
     
-    start_list = [[(0,0,10), (x_config-1,y_config-1,10)]]
+    start_list = [[(0,0,10), (x_config-1,y_config-1,10)],
+                  [(x_config-1,y_config-1,10), (0,0,10)]]
                   #[(x_config,0,10), (0,y_config-1,10)]]
     
     for start in start_list:
@@ -301,9 +304,7 @@ if __name__ == '__main__':
         for index in range(1,max_level+1):
             ab_graph.insert_temp_nodes(start[0], 20, index)
             ab_graph.insert_temp_nodes(start[1], 20, index)
-    
-        reservation_table = {}
-        
+            
         """high path search"""
         high_paths = []
         for i in reversed(range(2+1)):
@@ -313,7 +314,7 @@ if __name__ == '__main__':
             ##start level
             if i == 2:            
                 level_graph = ab_graph.graph_levels[str(i)]
-                astar_graph = PathFinding.AstarGraph(level_graph, reservation_table,
+                astar_graph = PathFinding.AstarGraph(level_graph, reserved_table,
                                                     start[0], start[1], curr_vel, curr_time)
                 path = astar_graph.main()
                 
@@ -326,7 +327,7 @@ if __name__ == '__main__':
                     ab_graph.insert_temp_nodes(path[j+1], 20, i)
                     
                     level_graph = ab_graph.graph_levels[str(i)]
-                    astar_graph = PathFinding.AstarGraph(level_graph, reservation_table,
+                    astar_graph = PathFinding.AstarGraph(level_graph, reserved_table,
                                                         coords, path[j+1], curr_vel, curr_time)                
                     some_path = astar_graph.main()
                                 
@@ -335,12 +336,31 @@ if __name__ == '__main__':
 
                         
         """low search"""
-        # for i,wp in enumerate(high_paths):
-        #     if i+1>=len(high_paths):
-        #         print("done")
-        refined_path = get_refine_path(map_area.meshgrid, high_paths, 
-                                       reserved_table,
-                                       col_bubble, weight_factor, curr_time)
+        print("beginning low search")
+        path, time, iter_count = get_refine_path(map_area.meshgrid, high_paths, 
+                                        reserved_table,col_bubble, weight_factor, 
+                                        curr_time)
+
+        #check if we have currect path
+        if path[-1][0:3] == start[1]:
+            print("yes", path[-1])
+            
+        if path != 0:
+            t_inflate = inflate_time(uav_vel=curr_vel, 
+                                      time_inflation=time_inflate, 
+                                      waypoints=path)
+            
+            inflated_list = inflate_waypoints(t_inflate, bubble)
+            reserved_table.update(inflated_list)
+            uas_paths.append(path)
+            
+                
+    animate_uas = PathFinding.AnimateMultiUAS(uas_paths=uas_paths, 
+                                  method_name= str(len(uas_paths)) + " UAS")
+    
+    animate_uas.plot_path(x_bounds=[0, x_config], 
+                                  y_bounds=[0, y_config], 
+                                  z_bounds=[0, z_config])
             
     
 #%% Testing out time appendices for weighted astar
@@ -419,5 +439,4 @@ if __name__ == '__main__':
                                   axis_on=True)
     
 
-                
             
