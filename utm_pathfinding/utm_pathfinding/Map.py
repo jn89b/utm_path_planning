@@ -200,7 +200,6 @@ class AbstractGraph(object):
         - set level
         """
         region_coords = self.map.find_which_region(location, level)
-        print("region coordinates of location", location, region_coords )
         temp_node = AbstractNode(location , region_coords)        
         self.connect_to_border(temp_node, str(location), height_bound, level)
         
@@ -209,7 +208,6 @@ class AbstractGraph(object):
         so set key to start and goal to make it temporary"""
         offset_limit = height_limit #this is dumb should have this parameterized
         height_bounds = [node.location[2]-offset_limit, node.location[2]+offset_limit]
-        print("height bounds are", height_bounds)
         
         regions = self.map.level_regions[str(level)]
         mapped_entrances_start = regions[str(node.region_coord)].region_sides
@@ -362,10 +360,9 @@ class Map(object):
         
         for reg_coord, region in regions.items():
             x_bounds, y_bounds = region.limits
-       
+
             if coordinates[0] in range(x_bounds[0], x_bounds[1]+self.offset_val) and \
                 (coordinates[1] in range(y_bounds[0], y_bounds[1]+self.offset_val)):
-                
                 return region.region_coordinate
                  
     def break_into_square_regions(self, num_regions:int, z_step:int, level:int) -> None:

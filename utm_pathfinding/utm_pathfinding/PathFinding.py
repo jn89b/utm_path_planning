@@ -52,7 +52,7 @@ class AstarGraph(object):
         self.end_location = end_location
         self.openset = PriorityQueue() # priority queue
         self.closedset = {}
-        self.iter_limit = 25000 #this is stupid should be a paramter
+        self.iter_limit = 20000#this is stupid should be a paramter
         
         if vel != None:
             self.vel = vel #m/s
@@ -77,6 +77,11 @@ class AstarGraph(object):
         """check if we have arrived at the goal"""
         if current_position == self.end_location:
             return True
+        
+        if current_position == tuple(self.end_location):
+            return True
+        
+        return False
 
     def __return_path_to_goal(self, current_node:tuple) -> list:
         """return path to starts"""
@@ -87,7 +92,6 @@ class AstarGraph(object):
             current = current.parent
         #reverse path
         path_goal = path_goal[::-1]
-        print("path to goal is", path_goal)
         
         return path_goal
     
@@ -104,13 +108,16 @@ class AstarGraph(object):
 
         if current_node.position[2] != neighbor_node.position[2]:
             penalty = 1
-        
-        new_node = Node(current_node, neighbor_node.location)
+
+        # new_position = (neighbor_node.position[0],neighbor_node.position[1],
+        #                 neighbor_node.position[2],current_node.total_time)
+        new_node = Node(current_node, neighbor_node.position)
         new_node.g = current_node.g + neighbor_node.cost
         new_node.h = distance
         new_node.f = new_node.g + (new_node.h * penalty)
-        new_node.total_distance = new_node.g + 1#cost 
+        new_node.total_distance = new_node.g  
         new_node.total_time = round(new_node.total_distance/ self.vel) + self.curr_time
+        # print("new node: ", new_node.total_time)
         
         return new_node
     
@@ -135,16 +142,19 @@ class AstarGraph(object):
             # print("current node is", current_node)
             if iter_count >= self.iter_limit:
                 # iter count
-                return iter_count,self.closedset
+                return 0, iter_count,self.closedset
             
             if self.__check_at_goal(current_node.position):
                 path_home = self.__return_path_to_goal(current_node)
-                return path_home
+                return path_home, iter_count, self.closedset
 
             self.closedset[str(current_node.position)] = current_node
             
             current_node_position = current_node.position
             neighbors = self.graph[str(current_node_position)]
+            
+            #need to include time for this to work
+            neighbor_list = []
 
             for neighbor in neighbors:
                 
@@ -154,10 +164,11 @@ class AstarGraph(object):
                 if str(neighbor.location) in self.closedset:
                     continue
                 
-                # if neighbor.location[0:2] == current_node_position[0:2]:
-                #     continue
+                time_position = (neighbor.position[0], neighbor.position[1],
+                                 neighbor.position[2], current_node.total_time)
                 
-                if tuple(neighbor.location) in self.reservation_table:
+                if time_position in self.reservation_table:
+                    # print("reserved", time_position)
                     continue
                 
                 #make new node
@@ -263,7 +274,10 @@ class AstarLowLevel(object):
         current = current_node
         
         while current is not None:
-            path.append(current.position)
+            position = (current.position[0], current.position[1], 
+                        current.position[2], current.total_time)
+            #path.append(current.position)
+            path.append(position)
             current = current.parent
         # Return reversed path as we need to show from start to end path
         path = path[::-1]
@@ -309,10 +323,10 @@ class AstarLowLevel(object):
         """compute penalty"""
         diff_z = current_z - new_z 
         if self._determine_penalty == "going down" and diff_z > 0:
-            return 1
+            return 1.25
         if self._determine_penalty == "going up" and diff_z < 0:
-            return 1
-        # if self._determine_penalty =="level":
+            return 1.25
+        # if self._determine_penalty =="level" or diff_z == 1:
         #     return 1
             
         return 1.0
@@ -324,6 +338,11 @@ class AstarLowLevel(object):
         
         if curr_pos == self.goal:
             return True
+        
+        if curr_pos == tuple(self.goal):
+            return True
+        
+        return False
     
     def main(self):
         ss = 1
@@ -337,7 +356,7 @@ class AstarLowLevel(object):
         while not self.openset.empty():
             count = count + 1
             
-            if count >= 20000:
+            if count >= 15000:
                 print("iterations too much for low level")
                 return 0, count, self.closedset
             
@@ -351,7 +370,6 @@ class AstarLowLevel(object):
             if self.at_goal(current_node):
                 #print("Goal reached", current_node.position)
                 path = self.return_path(current_node, self.grid)
-                print("success!", count)
                 return path, count, self.closedset 
                   
             #move generation
@@ -395,16 +413,16 @@ class AstarLowLevel(object):
                 #print("child.position", child.position)
                 if self.is_target_close(current_node.position, self.end_node):
                     cost = self.compute_euclidean(current_node.position, child)
-                    child.g = current_node.g + cost 
+                    child.g = current_node.g + 1#cost 
                     child.h = self.compute_euclidean(child.position, self.end_node)
-                    dynamic_weight = 0.75
+                    dynamic_weight = 1
                     child.f = child.g + (child.h *penalty*dynamic_weight)
                     child.total_distance = child.g 
                     child.total_time = round(child.total_distance/ self.vel)+ self.curr_time
                 else:
                     dynamic_weight = self.weight_factor
                     cost = self.compute_euclidean(current_node.position, child)
-                    child.g = current_node.g + cost
+                    child.g = current_node.g + 1 #cost
                     child.h = self.compute_euclidean(child.position, self.end_node)
                     child.f = child.g + (child.h *penalty*dynamic_weight)
                     child.total_distance = child.g
@@ -435,10 +453,10 @@ class AnimateMultiUAS():
     def plot_initial_final(self, start_pos, goal_pos, color):
         """plots the initial and final points of a UAS with a color"""
         self.graph = self.ax.scatter(start_pos[0], start_pos[1],
-                        start_pos[2], color=color, s=100, marker='o')
+                        start_pos[2], color=color, s=20, marker='o')
         
         self.graph = self.ax.scatter(goal_pos[0], goal_pos[1], 
-                        goal_pos[2], color=color, s=100, marker='x')
+                        goal_pos[2], color=color, s=20, marker='x')
         
         return self.graph
 
@@ -454,7 +472,7 @@ class AnimateMultiUAS():
                                                     path[-1], 
                                                     self.color_list[i])
             
-            self.ax.scatter(x,y,z, marker='o', color=self.color_list[i], s=100)
+            self.ax.scatter(x,y,z, marker='o', color=self.color_list[i], s=50)
             self.ax.plot(x,y,z , color=self.color_list[i])
         
     def init(self):
@@ -556,7 +574,7 @@ class AnimateMultiUAS():
         
         if save == True:
             print("saving")
-            # writervideo = FFMpegWriter(fps=10)
+            writervideo = FFMpegWriter(fps=10)
             self.ani.save('videos/'+self.method_name+'.mp4', 
                             writer=writervideo)
                     
