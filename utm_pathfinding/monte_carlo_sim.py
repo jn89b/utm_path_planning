@@ -330,13 +330,13 @@ if __name__ == '__main__':
     #%% SET UP SIMULATION
     
     #list of 50 to 100 uavs
-    number_sims = 0
-    uavs = [5]
+    number_sims = 500
+    uavs = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     
     min_max_vel = [10, 20]
     min_max_time_inflate = [5, 15]
 
-    n_uavs = 10
+    # n_uavs = 10
     obst_set = set() 
     max_z_climb = 20
     log_index_indicator = 5
@@ -370,7 +370,7 @@ if __name__ == '__main__':
             uav_radius_bounds = [2, 5]
             begin_list, end_list, radius_info = generate_random_uav_coordinates(uav_radius_bounds, 
                                                                 x_bounds, y_bounds, 
-                                                                z_bounds, n_uavs, 
+                                                                z_bounds, uav, 
                                                                 obst_set, max_z_climb,
                                                                 int(min_lateral_distance),
                                                                 int(max_lateral_distance))
