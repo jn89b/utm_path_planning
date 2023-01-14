@@ -1,0 +1,7 @@
+#ignore maps
+
+#how to add folder to ignore list
+
+maps/
+
+monte_carlo_data/

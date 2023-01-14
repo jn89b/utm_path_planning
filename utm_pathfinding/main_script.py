@@ -307,36 +307,33 @@ def evaluate_failure(path_dict):
     ax.scatter(x,y,z)
 
 
-
 #%%
 #% Main 
 if __name__ == '__main__':
     plt.close('all')
-    x_config = 1000
-    y_config = 1000
+    x_config = 1500
+    y_config = 1500
     z_config = 100
     x_bounds = [0, x_config-1]
     y_bounds = [0, y_config-1]
     z_bounds = [0, z_config-1]
     
     #works with 4
-    gs = 25
+    gs = 50
     
     """regions only work with even square roots"""
     map_area = Map.Map(x_config, y_config, z_config, gs)    
     
-    n_regions = 50
-    z_step = 10
+    n_regions = 100
+    z_step = 20
     max_level = 1
     
     map_area.break_into_square_regions(n_regions, z_step, max_level)
     map_area.find_neighbor_regions(1)
-
-    # map_area.break_into_square_regions(4, z_step, 2)
-    # map_area.find_neighbor_regions(2)
+    
     
     #%% 
-    map_area.plot_regions(1, True)
+    map_area.plot_regions(1, False)
     # map_area.plot_regions(2, False)
     
     #position = map_area.unravel_meshgrid()
@@ -355,7 +352,7 @@ if __name__ == '__main__':
     map_area.plot_regions(1)
     
     #%% uav set up
-    n_uavs = 20
+    n_uavs = 90
     obst_set = set() 
     
     col_bubble = 6
@@ -365,7 +362,6 @@ if __name__ == '__main__':
     max_z = 20
 
     #compute max lateral distance of map area
-    
     max_lateral_distance = ((x_config**2 + y_config**2)**(1/2))/1.5
     min_lateral_distance = max_lateral_distance/1.5
 
@@ -400,13 +396,18 @@ if __name__ == '__main__':
     all_high_paths = []
     failures = []
 
-    max_height_climb = 20
+    max_height_climb = 40
     start_time = timer()
     
     log_index_indicator = 5
     """I need to refactor this"""
     for i,start in enumerate(start_list):
+        
+        #round time to nearest second
+        curr_time = int(round(timer() - start_time, 0))
+
         if i % log_index_indicator == 0:
+            print("current time", curr_time)
             print("at iteration", i)
         """high path search"""
         high_paths = []        
@@ -489,7 +490,8 @@ if __name__ == '__main__':
                         inflated_list = inflate_waypoints(t_inflate, bubble)
                         reserved_table.update(inflated_list)                                    
                         continue
-            
+                    
+
             print("\n")
 
     end_time = timer()
