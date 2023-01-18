@@ -306,7 +306,7 @@ if __name__ == '__main__':
     #load in map from pickle 
     folder_dir = os.getcwd()
     folder_name = 'maps'
-    map_type = 'medium'
+    map_type = 'small'
 
     # base_map = get_map_from_pickle(folder_name+'/base')
     # small_map = get_map_from_pickle(folder_name+'/small')
@@ -330,8 +330,8 @@ if __name__ == '__main__':
     #%% SET UP SIMULATION
     
     #list of 50 to 100 uavs
-    number_sims = 500
-    uavs = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    number_sims = 50
+    uavs = [50,60,70,80,90,100]
     
     min_max_vel = [10, 20]
     min_max_time_inflate = [5, 15]
@@ -344,6 +344,9 @@ if __name__ == '__main__':
     
     for uav in uavs:
         for k in range(number_sims+1):
+
+            map_area = map_info['map_area']
+            ab_graph = map_info['graph']            
 
             #garbage collection
             gc.collect()
@@ -367,7 +370,7 @@ if __name__ == '__main__':
             #compute max lateral distance of map area
             max_lateral_distance = ((x_config**2 + y_config**2)**(1/2))/1.5
             min_lateral_distance = max_lateral_distance/1.5
-            uav_radius_bounds = [2, 5]
+            uav_radius_bounds = [2, 4]
             begin_list, end_list, radius_info = generate_random_uav_coordinates(uav_radius_bounds, 
                                                                 x_bounds, y_bounds, 
                                                                 z_bounds, uav, 
