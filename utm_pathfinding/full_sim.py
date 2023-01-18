@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jan 17 22:18:48 2023
+
+@author: justin
+"""
 # -*- coding: utf-8 -*-
 """
 Created on Mon Aug 22 13:39:48 2022
@@ -24,6 +31,7 @@ import itertools
 import random
 from itertools import permutations 
 from timeit import default_timer as timer
+import pickle
 
 
 from mpl_toolkits.mplot3d import axes3d, Axes3D 
@@ -306,6 +314,11 @@ def evaluate_failure(path_dict):
     ax = fig.add_subplot(projection='3d')
     ax.scatter(x,y,z)
 
+#function to save dictionary to pickle
+def save_to_pickle(pickle_file_name, data):
+    with open(pickle_file_name+'.pkl', 'wb') as f:
+        pickle.dump(data, f, pickle.HIGHEST_PROTOCOL)
+        
 
 #%%
 #% Main 
@@ -324,7 +337,7 @@ if __name__ == '__main__':
     """regions only work with even square roots"""
     map_area = Map.Map(x_config, y_config, z_config, gs)    
     
-    n_regions = 16
+    n_regions = 25
     z_step = 20
     max_level = 1
     
@@ -352,7 +365,7 @@ if __name__ == '__main__':
     map_area.plot_regions(1)
     
     #%% uav set up
-    n_uavs = 10
+    n_uavs = 300
     obst_set = set() 
     
     col_bubble = 6
@@ -387,8 +400,10 @@ if __name__ == '__main__':
     images instead of points for traversal 
     """
     uas_paths = []
-    curr_vel = 13 #m/Ss # this
-    vel_2 = 15 #m/s
+    uas_inflated_paths = []
+    time_list = []
+    curr_vel = 10 #m/Ss # this
+    vel_2 = 10 #m/s
     curr_time = 0 #s
     time_inflate = 5
     weight_factor = 5
@@ -398,7 +413,6 @@ if __name__ == '__main__':
 
     max_height_climb = 40
     start_time = timer()
-    
     log_index_indicator = 5
     """I need to refactor this"""
     for i,start in enumerate(start_list):
@@ -406,9 +420,26 @@ if __name__ == '__main__':
         #round time to nearest second
         curr_time = int(round(timer() - start_time, 0))
 
+        #loop through uas paths
+        for uas in uas_inflated_paths:
+            last_wp = uas[-1]
+            if last_wp[-1]+time_inflate <= curr_time:
+                # print("popping off uas from reserved table", last_wp)
+                #remove all values from reservation table
+                print("removing uas from reserved table")    
+                for wp in uas:
+                    #check if in reserved table
+                    if wp in reserved_table:
+                        reserved_table.remove(wp)
+                        #remove from uas_inf_paths
+                uas_inflated_paths.remove(uas)
+                        
+                
         if i % log_index_indicator == 0:
             print("current time", curr_time)
             print("at iteration", i)
+        
+        
         """high path search"""
         high_paths = []        
         if i % 1 == 0:
@@ -453,7 +484,6 @@ if __name__ == '__main__':
                         continue
                     
                 else:
-                    
                     ab_graph.insert_temp_nodes(start[0], max_height_climb, i)
                     ab_graph.insert_temp_nodes(start[1], max_height_climb, i)
                     
@@ -488,15 +518,39 @@ if __name__ == '__main__':
                         uas_paths.append(refined_path)
                         
                         inflated_list = inflate_waypoints(t_inflate, bubble)
+                        uas_inflated_paths.append(inflated_list)
                         reserved_table.update(inflated_list)                                    
                         continue
                     
-
             print("\n")
+            #round time to nearest second
+            dt = int(round(timer() - curr_time, 0))
+            time_list.append(dt)
+
+
 
     end_time = timer()
     time_diff = end_time - start_time
     print("time difference is ", time_diff)
+    
+    #%% 
+    info_dict = {
+        "time": time_list,
+        "iterations": iter_count,
+        "failures": failures,
+        "uas_paths": uas_paths,
+        "start_list": start_list,
+        "end_list": end_list,
+        # "sorted_radius": sorted_radius,
+        # "time_inflate_list": time_inflate_list,
+        # "velocity_list": velocity_list,
+    }
+
+    pickle_name = '24_hour_sim_0'
+    #save to pickle to monte_carlo_data
+    save_to_pickle("monte_carlo_data/"+pickle_name, 
+        info_dict)
+
                     
 #%% animate
     plt.close('all')

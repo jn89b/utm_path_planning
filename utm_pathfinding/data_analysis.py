@@ -3,17 +3,15 @@ from utm_pathfinding import PathFinding
 
 import matplotlib.pyplot as plt
 
-monte_carlo_data_dir = 'monte_carlo_data/medium'
-pickle_file_name = 'medium_sim_0_uavs_5'
-monte_data = data_utils.get_pickle_data(monte_carlo_data_dir + 
-    '/' + pickle_file_name)
+monte_carlo_data_dir = 'monte_carlo_data/good_base_batch/'
+pickle_file_name = 'base_sim'
 
 
-uas_paths = monte_data['uas_paths']
-start_list = monte_data['start_list']
+uas_paths = test['uas_paths']
+start_list = test['start_list']
 
-x_config = 2000
-y_config = 2000
+x_config = 100
+y_config = 100
 z_config = 100
 
 plt.close('all')                
