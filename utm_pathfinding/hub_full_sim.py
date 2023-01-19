@@ -374,6 +374,7 @@ if __name__=='__main__':
 
     overall_start_list = []
     overall_end_list = []
+    overall_time_list = []
     
     #%% 
     #SIMULATE 
@@ -438,6 +439,7 @@ if __name__=='__main__':
             """high path search"""
             high_paths = []        
             
+            compute_time = timer()
             #loop from max level to low level search
             for i in reversed(range(max_level+1)):
                 if i == 0:
@@ -514,9 +516,10 @@ if __name__=='__main__':
                             continue
                         
                 print("\n")
-                #round time to nearest second
-                dt = int(round(timer() - curr_time, 0))
-                time_list.append(dt)
+
+            total_compute_time = timer()- compute_time
+            overall_time_list.append(total_compute_time)
+                
 
 
         end_time = timer()
@@ -526,7 +529,7 @@ if __name__=='__main__':
 
     #%% 
     info_dict = {
-        "time": time_list,
+        "time": overall_time_list[:-1],
         "iterations": iter_count,
         "failures": failures,
         "uas_paths": uas_paths,
@@ -537,7 +540,7 @@ if __name__=='__main__':
         # "velocity_list": velocity_list,
     }
 
-    pickle_name = 'hub_sim_01'
+    pickle_name = 'hub_sim_05'
     #save to pickle to monte_carlo_data
     data_utils.save_to_pickle("monte_carlo_data/"+pickle_name, 
         info_dict)

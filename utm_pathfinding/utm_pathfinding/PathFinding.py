@@ -589,7 +589,7 @@ class AnimateMultiUAS():
         # for line, pt, xi in zip(lines, pts, x_t):
         for j, (line,pt) in enumerate(zip(self.lines,self.pts)):
         # for j, (line,pt) in enumerate(zip(self.lines,self.pts)):
-            time_span = 20
+            time_span = 5
             if i < time_span:
                 interval = 0
             else:
@@ -652,7 +652,7 @@ class AnimateMultiUAS():
         self.lines = [self.ax.plot([], [], [], linewidth=2)[0] 
                         for _ in range(len(self.uas_paths))]
 
-        self.pts = [self.ax.plot([], [], [], 'o')[0] 
+        self.pts = [self.ax.plot([], [], [], 'o', markersize=5)[0] 
                         for _ in range(len(self.uas_paths))]
         
         for i, (line,pt) in enumerate(zip(self.lines,self.pts)):
