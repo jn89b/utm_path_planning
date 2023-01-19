@@ -53,7 +53,6 @@ def create_graph(map_area, level:int):
 # Create a map object
 if __name__ == "__main__":
 
-        
     x_size = [500, 1000, 1500, 2000]
     y_size = [500, 1000, 1500, 2000]
     z_size = [100, 100, 100, 100]
