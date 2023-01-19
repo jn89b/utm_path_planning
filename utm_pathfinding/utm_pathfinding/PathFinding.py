@@ -490,15 +490,15 @@ class AnimateMultiUAS():
 
         # for line, pt, xi in zip(lines, pts, x_t):
         for j, (line,pt) in enumerate(zip(self.lines,self.pts)):
-            time_span = 1
+            time_span = 5
             if i < time_span:
                 interval = 0
             else:
                 interval = i - time_span
             
             #set lines 
-            line.set_data(self.x_list[j][:i], self.y_list[j][:i])
-            line.set_3d_properties(self.z_list[j][:i])
+            # line.set_data(self.x_list[j][:i], self.y_list[j][:i])
+            # line.set_3d_properties(self.z_list[j][:i])
 
             # #set points
             pt.set_data(self.x_list[j][interval:i], self.y_list[j][interval:i])
@@ -563,9 +563,9 @@ class AnimateMultiUAS():
         #get which solution is the longest to use as frame reference
         max_list = max(self.uas_paths, key=len)
 
-        self.ani = animation.FuncAnimation(
-            self.fig, self.update_multi, frames=len(max_list),repeat=True, 
-            interval=5,save_count=len(max_list))
+        # self.ani = animation.FuncAnimation(
+        #     self.fig, self.update_multi, frames=len(max_list),repeat=True, 
+        #     interval=5,save_count=len(max_list))
         
         self.ani = animation.FuncAnimation(
             self.fig, self.update_multi, init_func=self.init,
@@ -579,4 +579,105 @@ class AnimateMultiUAS():
                             writer=writervideo)
                     
         plt.show()
+
+
+    ### 24 hour sims
+    def update_multi_traffic(self,i:int):
+        # we'll step two time-steps per frame.  This leads to nice results.
+        # i = (2 * i) % x_t.shape[0]
+
+        # for line, pt, xi in zip(lines, pts, x_t):
+        for j, (line,pt) in enumerate(zip(self.lines,self.pts)):
+        # for j, (line,pt) in enumerate(zip(self.lines,self.pts)):
+            time_span = 20
+            if i < time_span:
+                interval = 0
+            else:
+                interval = i - time_span
+            
+            #set lines 
+            # line.set_data(self.x_list[j][interval:i], self.y_list[j][interval:i])
+            # line.set_3d_properties(self.z_list[j][interval:i])
+
+            # # #set points
+            pt.set_data(self.x_list[j][interval:i], self.y_list[j][interval:i])
+            pt.set_3d_properties(self.z_list[j][interval:i])
+        
+            #changing views
+            # self.ax.view_init(60, 0.3 * i)
+            # self.fig.canvas.draw()
+            
+        # fig.canvas.draw()
+        return self.lines + self.pts
+    
+
+    def animate_multi_uas_traffic(self, x_bounds:list, y_bounds:list, z_bounds:list, 
+                            axis_on=True, save=False):
+        """animate and simulate multiple uas"""
+        #https://stackoverflow.com/questions/56548884/saving-matplotlib-animation-as-movie-movie-too-short
+        #marker_size = 80
+        self.set_size_params(x_bounds, y_bounds, z_bounds)
+        
+        if axis_on == False:
+            self.ax.axis("off")
+        
+        self.x_list = []
+        self.y_list = []
+        self.z_list = []
+        
+        for i, uav_path in enumerate(self.uas_paths):
+            
+            #checking if we have a path
+            if not uav_path:
+                self.bad_index.append(i)
+            else:
+                self.curr_color = self.color_list[i]
+                x_list = [position[0] for position in uav_path]
+                y_list = [position[1] for position in uav_path]
+                z_list = [position[2] for position in uav_path]
+                
+                start_pos = [x_list[0], y_list[0], z_list[0]]
+                goal_pos  = [x_list[-1], y_list[-1], z_list[-1]]
+                
+
+                # self.graph = self.plot_initial_final(start_pos, 
+                #                                         goal_pos, 
+                #                                         self.color_list[i])         
+            
+                self.x_list.append(x_list)
+                self.y_list.append(y_list)
+                self.z_list.append(z_list)
+                
+        # set up lines and points
+        self.lines = [self.ax.plot([], [], [], linewidth=2)[0] 
+                        for _ in range(len(self.uas_paths))]
+
+        self.pts = [self.ax.plot([], [], [], 'o')[0] 
+                        for _ in range(len(self.uas_paths))]
+        
+        for i, (line,pt) in enumerate(zip(self.lines,self.pts)):
+            line._color = self.color_list[i]
+            pt._color = self.color_list[i]
+    
+            
+        #get which solution is the longest to use as frame reference
+        max_list = max(self.uas_paths, key=len)
+
+        # self.ani = animation.FuncAnimation(
+        #     self.fig, self.update_multi_traffic, frames=len(max_list),repeat=True, 
+        #     interval=5,save_count=len(max_list))
+        
+        self.ani = animation.FuncAnimation(
+            self.fig, self.update_multi_traffic, init_func=self.init,
+            frames=len(max_list), interval=50, blit=True, 
+            repeat=True)
+        
+        if save == True:
+            print("saving")
+            writervideo = FFMpegWriter(fps=10)
+            self.ani.save('videos/'+self.method_name+'.mp4', 
+                            writer=writervideo)
+                    
+        plt.show()
+
 

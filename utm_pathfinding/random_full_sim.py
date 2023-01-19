@@ -205,7 +205,7 @@ def get_refine_path(graph:np.meshgrid, abstract_path:list,
 
 
 def generate_random_uav_coordinates(radius, x_bounds, y_bounds,  z_bounds, n_coords, obst_set,
-   max_z_dist = 20, min_lateral_dist = 50, max_lateral_dist = 100):
+   max_z_dist = 20, min_lateral_dist = 50, max_lateral_dist = 100, excluded=set()):
     """generates random coordinates for uavs based on x bound, y bound, z bound
     and how many uavs you want and their proximity to each other"""
     # Generate a set of all points within 200 of the origin, to be used as offsets later
@@ -223,7 +223,7 @@ def generate_random_uav_coordinates(radius, x_bounds, y_bounds,  z_bounds, n_coo
                         
     start_points = []
     end_points = []
-    excluded = set()
+    # excluded = set()
     i = 0
 
     while i<n_coords:
@@ -365,11 +365,13 @@ if __name__ == '__main__':
     map_area.plot_regions(1)
     
     #%% uav set up
-    n_uavs = 300
+    n_uavs = 100
     obst_set = set() 
     
-    col_bubble = 6
-    col_radius = 6/2
+    col_bubble = np.random.randint(1, 3) # to 
+    
+    #round up to nearest even number
+    col_radius = (col_bubble + col_bubble % 2)
 
     bubble = create_bubble_bounds(col_radius)
     max_z = 20
@@ -395,15 +397,12 @@ if __name__ == '__main__':
     
 #%% High level search with low level search
 
-    """
-    2 UAS with opposite start and end position, 
-    images instead of points for traversal 
-    """
     uas_paths = []
     uas_inflated_paths = []
     time_list = []
-    curr_vel = 10 #m/Ss # this
-    vel_2 = 10 #m/s
+    
+    #random velocity 
+    curr_vel = np.random.randint(1,4)
     curr_time = 0 #s
     time_inflate = 5
     weight_factor = 5
@@ -411,7 +410,7 @@ if __name__ == '__main__':
     all_high_paths = []
     failures = []
 
-    max_height_climb = 40
+    max_height_climb = 20
     start_time = timer()
     log_index_indicator = 5
     """I need to refactor this"""
@@ -442,10 +441,6 @@ if __name__ == '__main__':
         
         """high path search"""
         high_paths = []        
-        if i % 1 == 0:
-            set_vel = curr_vel
-        else:
-            set_vel = vel_2
         
         #loop from max level to low level search
         for i in reversed(range(max_level+1)):
@@ -490,7 +485,7 @@ if __name__ == '__main__':
                     high_level_path = PathFinding.AstarGraph(ab_graph.graph_levels[str(i)], 
                                                              reserved_table, 
                                                              start[0], start[1],
-                                                             set_vel, curr_time)
+                                                             curr_vel, curr_time)
         
                     
                     high_path, time, iter_count  = high_level_path.main()
@@ -546,7 +541,7 @@ if __name__ == '__main__':
         # "velocity_list": velocity_list,
     }
 
-    pickle_name = '24_hour_sim_0'
+    pickle_name = '24_hour_sim_5'
     #save to pickle to monte_carlo_data
     save_to_pickle("monte_carlo_data/"+pickle_name, 
         info_dict)

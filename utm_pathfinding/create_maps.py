@@ -54,14 +54,14 @@ def create_graph(map_area, level:int):
 if __name__ == "__main__":
 
         
-    x_size = [100, 1000, 1500, 2000]
-    y_size = [100, 1000, 1500, 2000]
+    x_size = [500, 1000, 1500, 2000]
+    y_size = [500, 1000, 1500, 2000]
     z_size = [100, 100, 100, 100]
-    resolution = [10, 50, 100, 150]
-    map_name = ['base', 'small', 'medium', 'large']
-    regions = [4, 100, 150, 200]
+    resolution = [25, 50, 100, 150]
+    map_name = ['sim_world', 'small', 'medium', 'large']
+    regions = [16, 100, 150, 200]
 
-    idx = 3
+    idx = 0
     create_map_config(
         x_size[idx], 
         y_size[idx], 
