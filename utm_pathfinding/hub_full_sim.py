@@ -26,6 +26,7 @@ import matplotlib.pyplot as plt
 
 x_config = 500
 y_config = 500
+#curr_time = 0 
 
 def get_map_from_pickle(pickle_file):
     with open(pickle_file+'.pkl', 'rb') as f:
@@ -54,8 +55,26 @@ def gen_random_coords(radius, x_bounds, y_bounds,  z_bounds, n_coords, obst_set,
     end_points = []
     # excluded = set()
     i = 0
+    
+    
+    curr_time = int(round(timer() - start_time, 0))
 
     while i<n_coords:
+        
+        curr_time = int(round(timer() - start_time, 0))
+
+        #loop through uas paths
+        for uas in uas_inflated_paths:
+            last_wp = uas[-1]
+            curr_time = int(round(timer() - start_time, 0))
+            if last_wp[-1] <= curr_time:
+                #remove all values from reservation table
+                for wp in uas:
+                    #check if in reserved table
+                    if wp in reserved_table:
+                        reserved_table.remove(wp)
+                        #remove from uas_inf_paths
+                uas_inflated_paths.remove(uas)
         
         start_x = random.randrange(x_bounds[0], x_bounds[1])
         start_y = random.randrange(y_bounds[0], y_bounds[1])
@@ -197,7 +216,22 @@ def generate_random_uav_coordinates(radius, x_bounds, y_bounds,  z_bounds, n_coo
     i = 0
 
     while i<n_coords:
-            
+
+        curr_time = int(round(timer() - start_time, 0))
+
+        #loop through uas paths
+        for uas in uas_inflated_paths:
+            last_wp = uas[-1]
+            curr_time = int(round(timer() - start_time, 0))
+            if last_wp[-1] <= curr_time:
+                #remove all values from reservation table
+                for wp in uas:
+                    #check if in reserved table
+                    if wp in reserved_table:
+                        reserved_table.remove(wp)
+                        #remove from uas_inf_paths
+                uas_inflated_paths.remove(uas)
+
         start_x = random.randrange(x_bounds[0], x_bounds[1])
         start_y = random.randrange(y_bounds[0], y_bounds[1])
         start_z = random.randrange(z_bounds[0], z_bounds[1])
@@ -299,6 +333,7 @@ def create_bubble_bounds(col_radius:float)-> list:
     """create bubble size for UAS"""
     return list(np.arange(-col_radius, col_radius+1, 1))
 
+#%% 
 if __name__=='__main__':
     
     
@@ -317,7 +352,7 @@ if __name__=='__main__':
 
     x_config = 500
     y_config = 500
-    z_config = 100
+    z_config = map_area.z_array[-1]
     x_map_bounds = [0, x_config-1]
     y_map_bounds = [0, y_config-1]
     z_map_bounds = [0, z_config-1]
@@ -333,7 +368,7 @@ if __name__=='__main__':
 
     hub_x= [0, hub_x_size_meter/unit_per_cell]
     hub_y = [0, hub_y_size_meter/unit_per_cell]
-    hub_z = [0, 40]
+    hub_z = [0, z_config]
 
     radius = 10
     max_z = 20
@@ -540,7 +575,7 @@ if __name__=='__main__':
         # "velocity_list": velocity_list,
     }
 
-    pickle_name = 'hub_sim_05'
+    pickle_name = 'hub_sim_tested_0'
     #save to pickle to monte_carlo_data
     data_utils.save_to_pickle("monte_carlo_data/"+pickle_name, 
         info_dict)
@@ -552,9 +587,9 @@ if __name__=='__main__':
     animate_uas = PathFinding.AnimateMultiUAS(uas_paths=uas_paths, 
                                   method_name= str(len(uas_paths)/len(overall_start_list)) + " UAS")
     
-    animate_uas.plot_path(x_bounds=[0, x_config], 
-                                  y_bounds=[0, y_config], 
-                                  z_bounds=[0, z_config])    
+    # animate_uas.plot_path(x_bounds=[0, x_config], 
+    #                               y_bounds=[0, y_config], 
+    #                               z_bounds=[0, z_config])    
 
     animate_uas.animate_multi_uas(x_bounds=[0, x_config], 
                                   y_bounds=[0, y_config], 

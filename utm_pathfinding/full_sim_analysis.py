@@ -4,6 +4,9 @@ import pickle as pkl
 import matplotlib.pyplot as plt
 
 import pandas as pd
+from matplotlib import animation
+from matplotlib.animation import FFMpegWriter
+
 
 """
 Took time difference is  345.85243617499873
@@ -12,32 +15,31 @@ Took time difference is  345.85243617499873
 
                                                     #load pickle file
 monte_carlo_data_dir = 'monte_carlo_data/'
-pickle_file_name = 'hub_sim_05'
+pickle_file_name = 'hub_sim_tested'
 
 #pickle_file_name = '24_hour_sim_0'
 
 x_config = 450
 y_config = 450
-z_config = 100
+z_config = 12
 x_init = 10
 y_init = 10
 z_init = 10
 
 
-#load pkl file
 with open(monte_carlo_data_dir + pickle_file_name + '.pkl', 'rb') as f:
     test = pkl.load(f)
 
 
 #%% Assign data
-uas_paths = test['uas_paths']
-start_list = test['start_list']
+uas_paths = test['uas_paths'][:1350]
+start_list = test['start_list'][:1350]
 
 
 t_min = uas_paths[0][0][-1]
 t_max = uas_paths[-1][-1][-1]
 
-updated_paths = []
+updated_paths = []  
 
 for i, path in enumerate(uas_paths):
     time_init = path[0][-1]
@@ -86,9 +88,11 @@ for i, path in enumerate(uas_paths):
 
 
 plt.close('all')
-animate_uas = PathFinding.AnimateMultiUAS(uas_paths=updated_paths, 
-                                method_name= str(len(updated_paths)/len(start_list)) + " UAS")
+# plt.rcParams['animation.ffmpeg_path'] = '/opt/local/bin/ffmpeg'
 
+name = str(len(updated_paths)) + '/' + str(len(start_list)) + ' Paths Planned On First Attempt'
+animate_uas = PathFinding.AnimateMultiUAS(uas_paths=updated_paths, 
+                                method_name= name)
 # animate_uas.plot_path(x_bounds=[x_init, x_config], 
 #                                 y_bounds=[y_init, y_config], 
 #                                 z_bounds=[z_init, z_config])    
@@ -96,6 +100,12 @@ animate_uas = PathFinding.AnimateMultiUAS(uas_paths=updated_paths,
 animate_uas.animate_multi_uas_traffic(x_bounds=[x_init, x_config], 
                                 y_bounds=[y_init, y_config], 
                                 z_bounds=[z_init, z_config],
-                                axis_on=True)
+                                axis_on=True, save=False)
 
 
+
+# writervideo = FFMpegWriter(fps=120)
+# animate_uas.ani.save('hub_sim.mp4', 
+#                 writer=writervideo)
+        
+# plt.show()

@@ -10,6 +10,9 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import cnames
 from matplotlib import animation
 
+#import FFmpegWriter
+from matplotlib.animation import FFMpegWriter
+
 import logging
 
 class Node(object):
@@ -670,13 +673,13 @@ class AnimateMultiUAS():
         self.ani = animation.FuncAnimation(
             self.fig, self.update_multi_traffic, init_func=self.init,
             frames=len(max_list), interval=50, blit=True, 
-            repeat=True)
+            repeat=False)
         
         if save == True:
-            print("saving")
-            writervideo = FFMpegWriter(fps=10)
-            self.ani.save('videos/'+self.method_name+'.mp4', 
-                            writer=writervideo)
+            plt.rcParams['animation.ffmpeg_path']='C:/FFmpeg/bin/ffmpeg.exe'
+            #save video
+            writervideo = FFMpegWriter(fps=60)
+            self.ani.save('random_sim.mp4', writer=writervideo)
                     
         plt.show()
 

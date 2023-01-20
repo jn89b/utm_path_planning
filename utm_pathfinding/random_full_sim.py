@@ -326,7 +326,7 @@ if __name__ == '__main__':
     plt.close('all')
     x_config = 500
     y_config = 500
-    z_config = 100
+    z_config = 12 #100
     x_bounds = [0, x_config-1]
     y_bounds = [0, y_config-1]
     z_bounds = [0, z_config-1]
@@ -338,7 +338,7 @@ if __name__ == '__main__':
     map_area = Map.Map(x_config, y_config, z_config, gs)    
     
     n_regions = 25
-    z_step = 20
+    z_step = 1
     max_level = 1
     
     map_area.break_into_square_regions(n_regions, z_step, max_level)

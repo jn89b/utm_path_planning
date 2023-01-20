@@ -15,7 +15,7 @@ def create_map_config(x_size:int,
     Creates a map object and saves it to a pickle file.
     """
 
-    z_step = 20
+    z_step = 5
     max_level = 1
 
     # Create a map object
@@ -52,10 +52,12 @@ def create_graph(map_area, level:int):
 
 # Create a map object
 if __name__ == "__main__":
-
+    #round to closest int
+    z_height = 100/8
+    z_height = int(z_height + 0.5)
     x_size = [500, 1000, 1500, 2000]
     y_size = [500, 1000, 1500, 2000]
-    z_size = [100, 100, 100, 100]
+    z_size = [z_height, 100, 100, 100]
     resolution = [25, 50, 100, 150]
     map_name = ['sim_world', 'small', 'medium', 'large']
     regions = [16, 100, 150, 200]
