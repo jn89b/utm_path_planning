@@ -15,12 +15,12 @@ Took time difference is  345.85243617499873
 
                                                     #load pickle file
 monte_carlo_data_dir = 'monte_carlo_data/'
-pickle_file_name = 'hub_sim_tested'
+pickle_file_name = 'hub_sim_tested_0'
 
 #pickle_file_name = '24_hour_sim_0'
 
-x_config = 450
-y_config = 450
+x_config = 500
+y_config = 500
 z_config = 12
 x_init = 10
 y_init = 10

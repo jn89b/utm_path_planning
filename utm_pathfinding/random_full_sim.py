@@ -422,7 +422,8 @@ if __name__ == '__main__':
         #loop through uas paths
         for uas in uas_inflated_paths:
             last_wp = uas[-1]
-            if last_wp[-1]+time_inflate <= curr_time:
+            if last_wp[-1]<= curr_time:
+                curr_time = int(round(timer() - start_time, 0))
                 # print("popping off uas from reserved table", last_wp)
                 #remove all values from reservation table
                 print("removing uas from reserved table")    
@@ -541,7 +542,7 @@ if __name__ == '__main__':
         # "velocity_list": velocity_list,
     }
 
-    pickle_name = '24_hour_sim_5'
+    pickle_name = 'test'
     #save to pickle to monte_carlo_data
     save_to_pickle("monte_carlo_data/"+pickle_name, 
         info_dict)

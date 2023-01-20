@@ -415,24 +415,24 @@ if __name__=='__main__':
     #SIMULATE 
     while len(uas_paths) <= config.NUMBER_TOTAL_OPERATIONS+1:
          
-        n_hub_uavs = random.randint(config.MIN_SPAWN, config.NUMBER_UAV_HUBS)
+        # n_hub_uavs = random.randint(config.MIN_SPAWN, config.NUMBER_UAV_HUBS)
         n_random_uavs = random.randint(config.MIN_SPAWN, config.NUMBER_RANDOM_UAVS)
 
         random_set = set()
         print("current number of uas paths", len(uas_paths))
-        uav_hub_start, uav_hub_end = gen_random_coords(int(radius), 
-                                    hub_x, hub_y, hub_z, 
-                                    n_hub_uavs, random_set, 
-                                    int(min_lateral_distance),
-                                    int(max_lateral_distance))
+        # uav_hub_start, uav_hub_end = gen_random_coords(int(radius), 
+        #                             hub_x, hub_y, hub_z, 
+        #                             n_hub_uavs, random_set, 
+        #                             int(min_lateral_distance),
+        #                             int(max_lateral_distance))
 
         random_begin_list, random_end_list = generate_random_uav_coordinates(
             int(radius), x_map_bounds, y_map_bounds, z_map_bounds,  n_random_uavs,
             random_set, int(min_lateral_distance), int(max_lateral_distance)
         )
 
-        total_begin = uav_hub_start + random_begin_list + uav_hub_end
-        total_end = uav_hub_end + random_end_list + uav_hub_start
+        total_begin = random_begin_list 
+        total_end = random_end_list 
         
         info_list, sorted_start, sorted_goal = prioritize_uas(total_begin, total_end)
         
@@ -576,7 +576,7 @@ if __name__=='__main__':
         # "velocity_list": velocity_list,
     }
 
-    pickle_name = 'hub_sim_tested_0'
+    pickle_name = 'random_sim_tested0'
     #save to pickle to monte_carlo_data
     data_utils.save_to_pickle("monte_carlo_data/"+pickle_name, 
         info_dict)
