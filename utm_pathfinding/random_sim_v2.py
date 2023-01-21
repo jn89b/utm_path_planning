@@ -576,7 +576,7 @@ if __name__=='__main__':
         # "velocity_list": velocity_list,
     }
 
-    pickle_name = 'random_sim_tested0'
+    pickle_name = 'random_sim_tested_01'
     #save to pickle to monte_carlo_data
     data_utils.save_to_pickle("monte_carlo_data/"+pickle_name, 
         info_dict)

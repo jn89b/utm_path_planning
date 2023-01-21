@@ -14,7 +14,7 @@ from matplotlib import animation
 from matplotlib.animation import FFMpegWriter
 
 import logging
-
+import random
 class Node(object):
     """
     parent = parent of current node
@@ -442,6 +442,7 @@ class AnimateMultiUAS():
         self.uas_paths = uas_paths
         self.method_name = method_name
         self.color_list = sns.color_palette("hls", len(uas_paths))
+        # self.color_list = sns.diverging_palette(220, 20, n=len(uas_paths))
         self.bad_index = [] #bad indexes are index locations where paths cant be found
         
     def set_size_params(self,x_bounds:list, y_bounds:list, 
@@ -506,6 +507,9 @@ class AnimateMultiUAS():
             # #set points
             pt.set_data(self.x_list[j][interval:i], self.y_list[j][interval:i])
             pt.set_3d_properties(self.z_list[j][interval:i])
+        
+            # pt.set_data(self.x_list[j][interval:i], self.y_list[j][interval:i])
+            # pt.set_3d_properties(self.z_list[j][interval:i])
         
             #changing views
             # self.ax.view_init(60, 0.3 * i)
@@ -592,6 +596,13 @@ class AnimateMultiUAS():
         # for line, pt, xi in zip(lines, pts, x_t):
         for j, (line,pt) in enumerate(zip(self.lines,self.pts)):
         # for j, (line,pt) in enumerate(zip(self.lines,self.pts)):
+            
+            #check if out of bounds
+            # if self.x_list[j][i] <= self.x_bounds[0] or \
+            #     self.x_list[j][i] >= self.x_bounds[1]:
+            #         print("out of bounds", self.x_list[j][i])
+            #         continue
+            
             time_span = 5
             if i < time_span:
                 interval = 0
@@ -602,7 +613,7 @@ class AnimateMultiUAS():
             # line.set_data(self.x_list[j][interval:i], self.y_list[j][interval:i])
             # line.set_3d_properties(self.z_list[j][interval:i])
 
-            # # #set points
+            # # # #set points
             pt.set_data(self.x_list[j][interval:i], self.y_list[j][interval:i])
             pt.set_3d_properties(self.z_list[j][interval:i])
         
@@ -620,6 +631,10 @@ class AnimateMultiUAS():
         #https://stackoverflow.com/questions/56548884/saving-matplotlib-animation-as-movie-movie-too-short
         #marker_size = 80
         self.set_size_params(x_bounds, y_bounds, z_bounds)
+        
+        self.x_bounds = x_bounds
+        self.y_bounds = y_bounds
+        self.z_bounds = z_bounds
         
         if axis_on == False:
             self.ax.axis("off")
@@ -659,6 +674,10 @@ class AnimateMultiUAS():
                         for _ in range(len(self.uas_paths))]
         
         for i, (line,pt) in enumerate(zip(self.lines,self.pts)):
+            #choose random color for each uav
+            
+            # line._color = random.choice(self.color_list)
+            # pt._color = random.choice(self.color_list)
             line._color = self.color_list[i]
             pt._color = self.color_list[i]
     
@@ -672,15 +691,15 @@ class AnimateMultiUAS():
         
         self.ani = animation.FuncAnimation(
             self.fig, self.update_multi_traffic, init_func=self.init,
-            frames=len(max_list), interval=50, blit=True, 
+            frames=len(max_list), interval=1, blit=True, 
             repeat=False)
         
         if save == True:
             plt.rcParams['animation.ffmpeg_path']='C:/FFmpeg/bin/ffmpeg.exe'
             #save video
             writervideo = FFMpegWriter(fps=60)
-            self.ani.save('random_sim.mp4', writer=writervideo)
+            self.ani.save('test.mp4', writer=writervideo)
                     
-        plt.show()
+        #plt.show()
 
 

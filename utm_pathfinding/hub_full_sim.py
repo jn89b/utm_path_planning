@@ -64,17 +64,17 @@ def gen_random_coords(radius, x_bounds, y_bounds,  z_bounds, n_coords, obst_set,
         curr_time = int(round(timer() - start_time, 0))
 
         #loop through uas paths
-        for uas in uas_inflated_paths:
-            last_wp = uas[-1]
-            curr_time = int(round(timer() - start_time, 0))
-            if last_wp[-1] <= curr_time:
-                #remove all values from reservation table
-                for wp in uas:
-                    #check if in reserved table
-                    if wp in reserved_table:
-                        reserved_table.remove(wp)
-                        #remove from uas_inf_paths
-                uas_inflated_paths.remove(uas)
+        # for uas in uas_inflated_paths:
+        #     last_wp = uas[-1]
+        #     curr_time = int(round(timer() - start_time, 0))
+        #     if last_wp[-1] <= curr_time:
+        #         #remove all values from reservation table
+        #         for wp in uas:
+        #             #check if in reserved table
+        #             if wp in reserved_table:
+        #                 reserved_table.remove(wp)
+        #                 #remove from uas_inf_paths
+        #         uas_inflated_paths.remove(uas)
         
         start_x = random.randrange(x_bounds[0], x_bounds[1])
         start_y = random.randrange(y_bounds[0], y_bounds[1])
@@ -105,9 +105,9 @@ def gen_random_coords(radius, x_bounds, y_bounds,  z_bounds, n_coords, obst_set,
         if (end_x, end_y, end_z) in excluded or (end_x, end_y, end_z) in obst_set:
             continue
         
-        #check if end point is within max lateral distance
-        if math.dist((start_x, start_y, start_z), (end_x, end_y, end_z)) <= min_lateral_dist:
-            continue
+        # #check if end point is within max lateral distance
+        # if math.dist((start_x, start_y, start_z), (end_x, end_y, end_z)) <= min_lateral_dist:
+        #     continue
 
         #check if end point is out of bounds
         if end_x < x_bounds[0] or end_x > x_config:
@@ -220,17 +220,17 @@ def generate_random_uav_coordinates(radius, x_bounds, y_bounds,  z_bounds, n_coo
         curr_time = int(round(timer() - start_time, 0))
 
         #loop through uas paths
-        for uas in uas_inflated_paths:
-            last_wp = uas[-1]
-            curr_time = int(round(timer() - start_time, 0))
-            if last_wp[-1] <= curr_time:
-                #remove all values from reservation table
-                for wp in uas:
-                    #check if in reserved table
-                    if wp in reserved_table:
-                        reserved_table.remove(wp)
-                        #remove from uas_inf_paths
-                uas_inflated_paths.remove(uas)
+        # for uas in uas_inflated_paths:
+        #     last_wp = uas[-1]
+        #     curr_time = int(round(timer() - start_time, 0))
+        #     if last_wp[-1] <= curr_time:
+        #         #remove all values from reservation table
+        #         for wp in uas:
+        #             #check if in reserved table
+        #             if wp in reserved_table:
+        #                 reserved_table.remove(wp)
+        #                 #remove from uas_inf_paths
+        #         uas_inflated_paths.remove(uas)
 
         start_x = random.randrange(x_bounds[0], x_bounds[1])
         start_y = random.randrange(y_bounds[0], y_bounds[1])
@@ -397,7 +397,7 @@ if __name__=='__main__':
     
     #random velocity 
     curr_time = 0 #s
-    time_inflate = 3
+    
     weight_factor = 5
     reserved_table = set()
     all_high_paths = []
@@ -414,7 +414,9 @@ if __name__=='__main__':
     #%% 
     #SIMULATE 
     while len(uas_paths) <= config.NUMBER_TOTAL_OPERATIONS+1:
-         
+        
+        counter = 0
+        
         n_hub_uavs = random.randint(config.MIN_SPAWN, config.NUMBER_UAV_HUBS)
         n_random_uavs = random.randint(config.MIN_SPAWN, config.NUMBER_RANDOM_UAVS)
 
@@ -431,8 +433,13 @@ if __name__=='__main__':
             random_set, int(min_lateral_distance), int(max_lateral_distance)
         )
 
-        total_begin = uav_hub_start + random_begin_list + uav_hub_end
-        total_end = uav_hub_end + random_end_list + uav_hub_start
+
+        if counter % 2 == 0:
+            total_begin = uav_hub_start + random_begin_list + uav_hub_end
+            total_end = uav_hub_end + random_end_list + uav_hub_start
+        else:
+            total_begin = uav_hub_end + random_begin_list 
+            total_end = uav_hub_start + random_begin_list
         
         info_list, sorted_start, sorted_goal = prioritize_uas(total_begin, total_end)
         
@@ -447,6 +454,7 @@ if __name__=='__main__':
 
         """I need to refactor this"""
         for i,start in enumerate(start_list):
+            time_inflate = np.random.randint(5,10)
             curr_vel = np.random.randint(1,4)
             col_bubble = np.random.randint(1, 3) # to 
             col_radius = col_bubble/2
@@ -491,6 +499,7 @@ if __name__=='__main__':
                     ## if on same location do low level search instead
                     if region_start == region_end:
                         high_paths = [start[0], start[1]]
+                        curr_time = int(round(timer() - start_time, 0))
                         refined_path, time, iter_count = get_refine_path(map_area.meshgrid, high_paths, 
                                                         reserved_table,col_bubble, weight_factor, 
                                                         curr_time, curr_vel)
@@ -523,7 +532,8 @@ if __name__=='__main__':
             
                         
                         high_path, time, iter_count  = high_level_path.main()
-                        
+                        curr_time = int(round(timer() - start_time, 0))
+
                         if high_path == 0:
                             refined_path, time, iter_count = get_refine_path(map_area.meshgrid, [start[0], start[1]], 
                                                             reserved_table,col_bubble, weight_factor, 
@@ -576,7 +586,7 @@ if __name__=='__main__':
         # "velocity_list": velocity_list,
     }
 
-    pickle_name = 'hub_sim_tested_0'
+    pickle_name = 'hub_sim_tested_new_0'
     #save to pickle to monte_carlo_data
     data_utils.save_to_pickle("monte_carlo_data/"+pickle_name, 
         info_dict)

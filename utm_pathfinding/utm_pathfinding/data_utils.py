@@ -1,9 +1,10 @@
 import pickle
 
 def get_pickle_data(pickle_file):
+    print('Loading pickle file: ' + pickle_file + '.pkl')
     with open(pickle_file+'.pkl', 'rb') as f:
-        map_area = pickle.load(f)
-    return map_area
+        data = pickle.load(f)
+    return data
 
 #function to save dictionary to pickle
 def save_to_pickle(pickle_file_name, data):
